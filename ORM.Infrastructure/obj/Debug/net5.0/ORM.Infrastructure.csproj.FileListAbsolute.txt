@@ -1,0 +1,12 @@
+/root/RiderProjects/ORM/ORM.Infrastructure/bin/Debug/net5.0/ORM.Infrastructure.deps.json
+/root/RiderProjects/ORM/ORM.Infrastructure/bin/Debug/net5.0/ORM.Infrastructure.dll
+/root/RiderProjects/ORM/ORM.Infrastructure/bin/Debug/net5.0/ref/ORM.Infrastructure.dll
+/root/RiderProjects/ORM/ORM.Infrastructure/bin/Debug/net5.0/ORM.Infrastructure.pdb
+/root/RiderProjects/ORM/ORM.Infrastructure/obj/Debug/net5.0/ORM.Infrastructure.csproj.AssemblyReference.cache
+/root/RiderProjects/ORM/ORM.Infrastructure/obj/Debug/net5.0/ORM.Infrastructure.GeneratedMSBuildEditorConfig.editorconfig
+/root/RiderProjects/ORM/ORM.Infrastructure/obj/Debug/net5.0/ORM.Infrastructure.AssemblyInfoInputs.cache
+/root/RiderProjects/ORM/ORM.Infrastructure/obj/Debug/net5.0/ORM.Infrastructure.AssemblyInfo.cs
+/root/RiderProjects/ORM/ORM.Infrastructure/obj/Debug/net5.0/ORM.Infrastructure.csproj.CoreCompileInputs.cache
+/root/RiderProjects/ORM/ORM.Infrastructure/obj/Debug/net5.0/ORM.Infrastructure.dll
+/root/RiderProjects/ORM/ORM.Infrastructure/obj/Debug/net5.0/ref/ORM.Infrastructure.dll
+/root/RiderProjects/ORM/ORM.Infrastructure/obj/Debug/net5.0/ORM.Infrastructure.pdb

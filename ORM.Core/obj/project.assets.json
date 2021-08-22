@@ -1,0 +1,88 @@
+{
+  "version": 3,
+  "targets": {
+    "net5.0": {
+      "ORM.Infrastructure/1.0.0": {
+        "type": "project",
+        "framework": ".NETCoreApp,Version=v5.0",
+        "compile": {
+          "bin/placeholder/ORM.Infrastructure.dll": {}
+        },
+        "runtime": {
+          "bin/placeholder/ORM.Infrastructure.dll": {}
+        }
+      }
+    }
+  },
+  "libraries": {
+    "ORM.Infrastructure/1.0.0": {
+      "type": "project",
+      "path": "../ORM.Infrastructure/ORM.Infrastructure.csproj",
+      "msbuildProject": "../ORM.Infrastructure/ORM.Infrastructure.csproj"
+    }
+  },
+  "projectFileDependencyGroups": {
+    "net5.0": [
+      "ORM.Infrastructure >= 1.0.0"
+    ]
+  },
+  "packageFolders": {
+    "/root/.nuget/packages/": {}
+  },
+  "project": {
+    "version": "1.0.0",
+    "restore": {
+      "projectUniqueName": "/root/RiderProjects/ORM/ORM.Core/ORM.Core.csproj",
+      "projectName": "ORM.Core",
+      "projectPath": "/root/RiderProjects/ORM/ORM.Core/ORM.Core.csproj",
+      "packagesPath": "/root/.nuget/packages/",
+      "outputPath": "/root/RiderProjects/ORM/ORM.Core/obj/",
+      "projectStyle": "PackageReference",
+      "configFilePaths": [
+        "/root/.nuget/NuGet/NuGet.Config"
+      ],
+      "originalTargetFrameworks": [
+        "net5.0"
+      ],
+      "sources": {
+        "https://api.nuget.org/v3/index.json": {}
+      },
+      "frameworks": {
+        "net5.0": {
+          "targetAlias": "net5.0",
+          "projectReferences": {
+            "/root/RiderProjects/ORM/ORM.Infrastructure/ORM.Infrastructure.csproj": {
+              "projectPath": "/root/RiderProjects/ORM/ORM.Infrastructure/ORM.Infrastructure.csproj"
+            }
+          }
+        }
+      },
+      "warningProperties": {
+        "warnAsError": [
+          "NU1605"
+        ]
+      }
+    },
+    "frameworks": {
+      "net5.0": {
+        "targetAlias": "net5.0",
+        "imports": [
+          "net461",
+          "net462",
+          "net47",
+          "net471",
+          "net472",
+          "net48"
+        ],
+        "assetTargetFallback": true,
+        "warn": true,
+        "frameworkReferences": {
+          "Microsoft.NETCore.App": {
+            "privateAssets": "all"
+          }
+        },
+        "runtimeIdentifierGraphPath": "/usr/share/dotnet/sdk/5.0.400/RuntimeIdentifierGraph.json"
+      }
+    }
+  }
+}

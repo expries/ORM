@@ -1,0 +1,49 @@
+{
+  "runtimeTarget": {
+    "name": ".NETCoreApp,Version=v5.0",
+    "signature": ""
+  },
+  "compilationOptions": {},
+  "targets": {
+    ".NETCoreApp,Version=v5.0": {
+      "ORM.Postgres/1.0.0": {
+        "dependencies": {
+          "ORM.Core": "1.0.0"
+        },
+        "runtime": {
+          "ORM.Postgres.dll": {}
+        }
+      },
+      "ORM.Core/1.0.0": {
+        "dependencies": {
+          "ORM.Infrastructure": "1.0.0"
+        },
+        "runtime": {
+          "ORM.Core.dll": {}
+        }
+      },
+      "ORM.Infrastructure/1.0.0": {
+        "runtime": {
+          "ORM.Infrastructure.dll": {}
+        }
+      }
+    }
+  },
+  "libraries": {
+    "ORM.Postgres/1.0.0": {
+      "type": "project",
+      "serviceable": false,
+      "sha512": ""
+    },
+    "ORM.Core/1.0.0": {
+      "type": "project",
+      "serviceable": false,
+      "sha512": ""
+    },
+    "ORM.Infrastructure/1.0.0": {
+      "type": "project",
+      "serviceable": false,
+      "sha512": ""
+    }
+  }
+}

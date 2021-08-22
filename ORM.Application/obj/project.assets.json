@@ -1,0 +1,132 @@
+{
+  "version": 3,
+  "targets": {
+    "net5.0": {
+      "ORM.Core/1.0.0": {
+        "type": "project",
+        "framework": ".NETCoreApp,Version=v5.0",
+        "dependencies": {
+          "ORM.Infrastructure": "1.0.0"
+        },
+        "compile": {
+          "bin/placeholder/ORM.Core.dll": {}
+        },
+        "runtime": {
+          "bin/placeholder/ORM.Core.dll": {}
+        }
+      },
+      "ORM.Infrastructure/1.0.0": {
+        "type": "project",
+        "framework": ".NETCoreApp,Version=v5.0",
+        "compile": {
+          "bin/placeholder/ORM.Infrastructure.dll": {}
+        },
+        "runtime": {
+          "bin/placeholder/ORM.Infrastructure.dll": {}
+        }
+      },
+      "ORM.Postgres/1.0.0": {
+        "type": "project",
+        "framework": ".NETCoreApp,Version=v5.0",
+        "dependencies": {
+          "ORM.Core": "1.0.0"
+        },
+        "compile": {
+          "bin/placeholder/ORM.Postgres.dll": {}
+        },
+        "runtime": {
+          "bin/placeholder/ORM.Postgres.dll": {}
+        }
+      }
+    }
+  },
+  "libraries": {
+    "ORM.Core/1.0.0": {
+      "type": "project",
+      "path": "../ORM.Core/ORM.Core.csproj",
+      "msbuildProject": "../ORM.Core/ORM.Core.csproj"
+    },
+    "ORM.Infrastructure/1.0.0": {
+      "type": "project",
+      "path": "../ORM.Infrastructure/ORM.Infrastructure.csproj",
+      "msbuildProject": "../ORM.Infrastructure/ORM.Infrastructure.csproj"
+    },
+    "ORM.Postgres/1.0.0": {
+      "type": "project",
+      "path": "../ORM.Postgres/ORM.Postgres.csproj",
+      "msbuildProject": "../ORM.Postgres/ORM.Postgres.csproj"
+    }
+  },
+  "projectFileDependencyGroups": {
+    "net5.0": [
+      "ORM.Core >= 1.0.0",
+      "ORM.Infrastructure >= 1.0.0",
+      "ORM.Postgres >= 1.0.0"
+    ]
+  },
+  "packageFolders": {
+    "/root/.nuget/packages/": {}
+  },
+  "project": {
+    "version": "1.0.0",
+    "restore": {
+      "projectUniqueName": "/root/RiderProjects/ORM/ORM.Application/ORM.Application.csproj",
+      "projectName": "ORM.Application",
+      "projectPath": "/root/RiderProjects/ORM/ORM.Application/ORM.Application.csproj",
+      "packagesPath": "/root/.nuget/packages/",
+      "outputPath": "/root/RiderProjects/ORM/ORM.Application/obj/",
+      "projectStyle": "PackageReference",
+      "configFilePaths": [
+        "/root/.nuget/NuGet/NuGet.Config"
+      ],
+      "originalTargetFrameworks": [
+        "net5.0"
+      ],
+      "sources": {
+        "https://api.nuget.org/v3/index.json": {}
+      },
+      "frameworks": {
+        "net5.0": {
+          "targetAlias": "net5.0",
+          "projectReferences": {
+            "/root/RiderProjects/ORM/ORM.Core/ORM.Core.csproj": {
+              "projectPath": "/root/RiderProjects/ORM/ORM.Core/ORM.Core.csproj"
+            },
+            "/root/RiderProjects/ORM/ORM.Infrastructure/ORM.Infrastructure.csproj": {
+              "projectPath": "/root/RiderProjects/ORM/ORM.Infrastructure/ORM.Infrastructure.csproj"
+            },
+            "/root/RiderProjects/ORM/ORM.Postgres/ORM.Postgres.csproj": {
+              "projectPath": "/root/RiderProjects/ORM/ORM.Postgres/ORM.Postgres.csproj"
+            }
+          }
+        }
+      },
+      "warningProperties": {
+        "warnAsError": [
+          "NU1605"
+        ]
+      }
+    },
+    "frameworks": {
+      "net5.0": {
+        "targetAlias": "net5.0",
+        "imports": [
+          "net461",
+          "net462",
+          "net47",
+          "net471",
+          "net472",
+          "net48"
+        ],
+        "assetTargetFallback": true,
+        "warn": true,
+        "frameworkReferences": {
+          "Microsoft.NETCore.App": {
+            "privateAssets": "all"
+          }
+        },
+        "runtimeIdentifierGraphPath": "/usr/share/dotnet/sdk/5.0.400/RuntimeIdentifierGraph.json"
+      }
+    }
+  }
+}

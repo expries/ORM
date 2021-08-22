@@ -1,0 +1,34 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ORM.Core", "ORM.Core\ORM.Core.csproj", "{B2E251E5-5008-4E94-859D-0D72F206D56B}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ORM.Infrastructure", "ORM.Infrastructure\ORM.Infrastructure.csproj", "{33BF1382-A70F-4379-A636-3F5D3BC12717}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ORM.Application", "ORM.Application\ORM.Application.csproj", "{D146AA0F-9D68-403D-8538-D7DCF03F0010}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ORM.Postgres", "ORM.Postgres\ORM.Postgres.csproj", "{36D52EAD-529F-4C72-AEAA-504D00867AEF}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{B2E251E5-5008-4E94-859D-0D72F206D56B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B2E251E5-5008-4E94-859D-0D72F206D56B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B2E251E5-5008-4E94-859D-0D72F206D56B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B2E251E5-5008-4E94-859D-0D72F206D56B}.Release|Any CPU.Build.0 = Release|Any CPU
+		{33BF1382-A70F-4379-A636-3F5D3BC12717}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{33BF1382-A70F-4379-A636-3F5D3BC12717}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{33BF1382-A70F-4379-A636-3F5D3BC12717}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{33BF1382-A70F-4379-A636-3F5D3BC12717}.Release|Any CPU.Build.0 = Release|Any CPU
+		{D146AA0F-9D68-403D-8538-D7DCF03F0010}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D146AA0F-9D68-403D-8538-D7DCF03F0010}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D146AA0F-9D68-403D-8538-D7DCF03F0010}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D146AA0F-9D68-403D-8538-D7DCF03F0010}.Release|Any CPU.Build.0 = Release|Any CPU
+		{36D52EAD-529F-4C72-AEAA-504D00867AEF}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{36D52EAD-529F-4C72-AEAA-504D00867AEF}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{36D52EAD-529F-4C72-AEAA-504D00867AEF}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{36D52EAD-529F-4C72-AEAA-504D00867AEF}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+EndGlobal

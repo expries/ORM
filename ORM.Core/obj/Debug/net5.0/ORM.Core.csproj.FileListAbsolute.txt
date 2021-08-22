@@ -1,0 +1,15 @@
+/root/RiderProjects/ORM/ORM.Core/bin/Debug/net5.0/ORM.Core.deps.json
+/root/RiderProjects/ORM/ORM.Core/bin/Debug/net5.0/ORM.Core.dll
+/root/RiderProjects/ORM/ORM.Core/bin/Debug/net5.0/ref/ORM.Core.dll
+/root/RiderProjects/ORM/ORM.Core/bin/Debug/net5.0/ORM.Core.pdb
+/root/RiderProjects/ORM/ORM.Core/bin/Debug/net5.0/ORM.Infrastructure.dll
+/root/RiderProjects/ORM/ORM.Core/bin/Debug/net5.0/ORM.Infrastructure.pdb
+/root/RiderProjects/ORM/ORM.Core/obj/Debug/net5.0/ORM.Core.csproj.AssemblyReference.cache
+/root/RiderProjects/ORM/ORM.Core/obj/Debug/net5.0/ORM.Core.GeneratedMSBuildEditorConfig.editorconfig
+/root/RiderProjects/ORM/ORM.Core/obj/Debug/net5.0/ORM.Core.AssemblyInfoInputs.cache
+/root/RiderProjects/ORM/ORM.Core/obj/Debug/net5.0/ORM.Core.AssemblyInfo.cs
+/root/RiderProjects/ORM/ORM.Core/obj/Debug/net5.0/ORM.Core.csproj.CoreCompileInputs.cache
+/root/RiderProjects/ORM/ORM.Core/obj/Debug/net5.0/ORM.Core.csproj.CopyComplete
+/root/RiderProjects/ORM/ORM.Core/obj/Debug/net5.0/ORM.Core.dll
+/root/RiderProjects/ORM/ORM.Core/obj/Debug/net5.0/ref/ORM.Core.dll
+/root/RiderProjects/ORM/ORM.Core/obj/Debug/net5.0/ORM.Core.pdb
