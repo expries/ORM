@@ -1,16 +1,18 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
-using ORM.Infrastructure.Database;
+using System.Reflection;
+using ORM.Core.Database;
 
 namespace ORM.Core.Helpers
 {
-    public static class AssemblyScanner
+    internal static class AssemblyScanner
     {
-        public static IEnumerable<Type> GetEntityTypes(System.Reflection.Assembly assembly)
+        public static IEnumerable<Type> GetEntityTypes(Assembly assembly)
         {
             var dbContexts = GetDbContextTypes(assembly);
-            IEnumerable<Type> entities = new List<Type>();
+            IEnumerable<Type?> entities = new List<Type>();
             
             foreach (var context in dbContexts)
             {
@@ -25,10 +27,10 @@ namespace ORM.Core.Helpers
             return entities;
         }
         
-        public static IEnumerable<Type> GetDbContextTypes(System.Reflection.Assembly assembly)
+        private static IEnumerable<Type> GetDbContextTypes(Assembly assembly)
         {
-            var types = assembly.GetTypes();
-            var contexts = types.Where(t => t.IsSubclassOf(typeof(DbContext)));
+            Type[] types = assembly.GetTypes();
+            IEnumerable<Type> contexts = types.Where(t => t.IsSubclassOf(typeof(DbContext)));
             return contexts;
         }
     }

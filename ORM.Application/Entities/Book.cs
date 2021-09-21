@@ -1,10 +1,12 @@
 using System.Collections.Generic;
-using ORM.Infrastructure.Attributes;
+using ORM.Core.Attributes;
 
 namespace ORM.Application.Entities
 {
     public class Book
     {
+        public List<Author> Authors { get; set; }
+
         [PrimaryKey]
         public int BookId { get; set; }
         
@@ -20,7 +22,5 @@ namespace ORM.Application.Entities
         public int Purchases { get; set; }
         
         public int Likes { get; set; }
-        
-        public List<Author> Authors { get; set; }
     }
 }

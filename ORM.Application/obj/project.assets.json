@@ -2,12 +2,18 @@
   "version": 3,
   "targets": {
     "net5.0": {
+      "Newtonsoft.Json/13.0.1": {
+        "type": "package",
+        "compile": {
+          "lib/netstandard2.0/Newtonsoft.Json.dll": {}
+        },
+        "runtime": {
+          "lib/netstandard2.0/Newtonsoft.Json.dll": {}
+        }
+      },
       "ORM.Core/1.0.0": {
         "type": "project",
         "framework": ".NETCoreApp,Version=v5.0",
-        "dependencies": {
-          "ORM.Infrastructure": "1.0.0"
-        },
         "compile": {
           "bin/placeholder/ORM.Core.dll": {}
         },
@@ -18,11 +24,27 @@
       "ORM.Infrastructure/1.0.0": {
         "type": "project",
         "framework": ".NETCoreApp,Version=v5.0",
+        "dependencies": {
+          "ORM.Core": "1.0.0"
+        },
         "compile": {
           "bin/placeholder/ORM.Infrastructure.dll": {}
         },
         "runtime": {
           "bin/placeholder/ORM.Infrastructure.dll": {}
+        }
+      },
+      "ORM.LinqProvider/1.0.0": {
+        "type": "project",
+        "framework": ".NETCoreApp,Version=v5.0",
+        "dependencies": {
+          "ORM.Core": "1.0.0"
+        },
+        "compile": {
+          "bin/placeholder/ORM.LinqProvider.dll": {}
+        },
+        "runtime": {
+          "bin/placeholder/ORM.LinqProvider.dll": {}
         }
       },
       "ORM.Postgres/1.0.0": {
@@ -41,6 +63,33 @@
     }
   },
   "libraries": {
+    "Newtonsoft.Json/13.0.1": {
+      "sha512": "ppPFpBcvxdsfUonNcvITKqLl3bqxWbDCZIzDWHzjpdAHRFfZe0Dw9HmA0+za13IdyrgJwpkDTDA9fHaxOrt20A==",
+      "type": "package",
+      "path": "newtonsoft.json/13.0.1",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "LICENSE.md",
+        "lib/net20/Newtonsoft.Json.dll",
+        "lib/net20/Newtonsoft.Json.xml",
+        "lib/net35/Newtonsoft.Json.dll",
+        "lib/net35/Newtonsoft.Json.xml",
+        "lib/net40/Newtonsoft.Json.dll",
+        "lib/net40/Newtonsoft.Json.xml",
+        "lib/net45/Newtonsoft.Json.dll",
+        "lib/net45/Newtonsoft.Json.xml",
+        "lib/netstandard1.0/Newtonsoft.Json.dll",
+        "lib/netstandard1.0/Newtonsoft.Json.xml",
+        "lib/netstandard1.3/Newtonsoft.Json.dll",
+        "lib/netstandard1.3/Newtonsoft.Json.xml",
+        "lib/netstandard2.0/Newtonsoft.Json.dll",
+        "lib/netstandard2.0/Newtonsoft.Json.xml",
+        "newtonsoft.json.13.0.1.nupkg.sha512",
+        "newtonsoft.json.nuspec",
+        "packageIcon.png"
+      ]
+    },
     "ORM.Core/1.0.0": {
       "type": "project",
       "path": "../ORM.Core/ORM.Core.csproj",
@@ -51,6 +100,11 @@
       "path": "../ORM.Infrastructure/ORM.Infrastructure.csproj",
       "msbuildProject": "../ORM.Infrastructure/ORM.Infrastructure.csproj"
     },
+    "ORM.LinqProvider/1.0.0": {
+      "type": "project",
+      "path": "../ORM.LinqProvider/ORM.LinqProvider.csproj",
+      "msbuildProject": "../ORM.LinqProvider/ORM.LinqProvider.csproj"
+    },
     "ORM.Postgres/1.0.0": {
       "type": "project",
       "path": "../ORM.Postgres/ORM.Postgres.csproj",
@@ -59,44 +113,51 @@
   },
   "projectFileDependencyGroups": {
     "net5.0": [
+      "Newtonsoft.Json >= 13.0.1",
       "ORM.Core >= 1.0.0",
       "ORM.Infrastructure >= 1.0.0",
+      "ORM.LinqProvider >= 1.0.0",
       "ORM.Postgres >= 1.0.0"
     ]
   },
   "packageFolders": {
-    "/root/.nuget/packages/": {}
+    "C:\\Users\\Samuel\\.nuget\\packages\\": {}
   },
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "/root/RiderProjects/ORM/ORM.Application/ORM.Application.csproj",
+      "projectUniqueName": "D:\\ORM\\ORM.Application\\ORM.Application.csproj",
       "projectName": "ORM.Application",
-      "projectPath": "/root/RiderProjects/ORM/ORM.Application/ORM.Application.csproj",
-      "packagesPath": "/root/.nuget/packages/",
-      "outputPath": "/root/RiderProjects/ORM/ORM.Application/obj/",
+      "projectPath": "D:\\ORM\\ORM.Application\\ORM.Application.csproj",
+      "packagesPath": "C:\\Users\\Samuel\\.nuget\\packages\\",
+      "outputPath": "D:\\ORM\\ORM.Application\\obj\\",
       "projectStyle": "PackageReference",
       "configFilePaths": [
-        "/root/.nuget/NuGet/NuGet.Config"
+        "C:\\Users\\Samuel\\AppData\\Roaming\\NuGet\\NuGet.Config",
+        "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
       ],
       "originalTargetFrameworks": [
         "net5.0"
       ],
       "sources": {
+        "C:\\Program Files (x86)\\Microsoft SDKs\\NuGetPackages\\": {},
         "https://api.nuget.org/v3/index.json": {}
       },
       "frameworks": {
         "net5.0": {
           "targetAlias": "net5.0",
           "projectReferences": {
-            "/root/RiderProjects/ORM/ORM.Core/ORM.Core.csproj": {
-              "projectPath": "/root/RiderProjects/ORM/ORM.Core/ORM.Core.csproj"
+            "D:\\ORM\\ORM.Core\\ORM.Core.csproj": {
+              "projectPath": "D:\\ORM\\ORM.Core\\ORM.Core.csproj"
             },
-            "/root/RiderProjects/ORM/ORM.Infrastructure/ORM.Infrastructure.csproj": {
-              "projectPath": "/root/RiderProjects/ORM/ORM.Infrastructure/ORM.Infrastructure.csproj"
+            "D:\\ORM\\ORM.Infrastructure\\ORM.Infrastructure.csproj": {
+              "projectPath": "D:\\ORM\\ORM.Infrastructure\\ORM.Infrastructure.csproj"
             },
-            "/root/RiderProjects/ORM/ORM.Postgres/ORM.Postgres.csproj": {
-              "projectPath": "/root/RiderProjects/ORM/ORM.Postgres/ORM.Postgres.csproj"
+            "D:\\ORM\\ORM.LinqProvider\\ORM.LinqProvider.csproj": {
+              "projectPath": "D:\\ORM\\ORM.LinqProvider\\ORM.LinqProvider.csproj"
+            },
+            "D:\\ORM\\ORM.Postgres\\ORM.Postgres.csproj": {
+              "projectPath": "D:\\ORM\\ORM.Postgres\\ORM.Postgres.csproj"
             }
           }
         }
@@ -110,6 +171,12 @@
     "frameworks": {
       "net5.0": {
         "targetAlias": "net5.0",
+        "dependencies": {
+          "Newtonsoft.Json": {
+            "target": "Package",
+            "version": "[13.0.1, )"
+          }
+        },
         "imports": [
           "net461",
           "net462",
@@ -125,7 +192,7 @@
             "privateAssets": "all"
           }
         },
-        "runtimeIdentifierGraphPath": "/usr/share/dotnet/sdk/5.0.400/RuntimeIdentifierGraph.json"
+        "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\5.0.302\\RuntimeIdentifierGraph.json"
       }
     }
   }

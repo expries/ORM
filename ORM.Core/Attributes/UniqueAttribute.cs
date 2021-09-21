@@ -1,6 +1,6 @@
 using System;
 
-namespace ORM.Infrastructure.Attributes
+namespace ORM.Core.Attributes
 {
     public class UniqueAttribute : Attribute
     {

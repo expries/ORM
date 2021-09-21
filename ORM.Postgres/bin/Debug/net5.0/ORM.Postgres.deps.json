@@ -15,16 +15,8 @@
         }
       },
       "ORM.Core/1.0.0": {
-        "dependencies": {
-          "ORM.Infrastructure": "1.0.0"
-        },
         "runtime": {
           "ORM.Core.dll": {}
-        }
-      },
-      "ORM.Infrastructure/1.0.0": {
-        "runtime": {
-          "ORM.Infrastructure.dll": {}
         }
       }
     }
@@ -36,11 +28,6 @@
       "sha512": ""
     },
     "ORM.Core/1.0.0": {
-      "type": "project",
-      "serviceable": false,
-      "sha512": ""
-    },
-    "ORM.Infrastructure/1.0.0": {
       "type": "project",
       "serviceable": false,
       "sha512": ""

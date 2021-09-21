@@ -1,6 +1,6 @@
 namespace ORM.Postgres.DataTypes
 {
-    public class PostgresVarchar : PostgresLengthRestrictedType
+    public class PostgresVarchar : PostgresLengthRestrictedDbType
     {
         public static int DefaultLength => 255;
 

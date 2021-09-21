@@ -1,8 +1,8 @@
 {
   "version": 2,
-  "dgSpecHash": "vbfDaGVYoRte47PshvdQ7ek6vmBEppJ3zkqkTcF3CYlQsTvzGop90R2cYnIaV/V08hrZuLRzD6vIdjD4QNY27Q==",
+  "dgSpecHash": "eVhOe5ccBs+lBT9wpLAqcgHCWaPoDNTWxk6kiUGDJGEtqullmgczqbaRRqWcHmbJTPgMq1UqqWBNqYMfiuBObg==",
   "success": true,
-  "projectFilePath": "/root/RiderProjects/ORM/ORM.Postgres/ORM.Postgres.csproj",
+  "projectFilePath": "D:\\ORM\\ORM.Postgres\\ORM.Postgres.csproj",
   "expectedPackageFiles": [],
   "logs": []
 }

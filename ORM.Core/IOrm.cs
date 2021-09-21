@@ -1,11 +1,13 @@
-using ORM.Core.SqlDialects;
+ using System.Collections.Generic;
+ using System.Reflection;
+ using ORM.Core.Models;
 
-namespace ORM.Core
+ namespace ORM.Core
 {
     public interface IOrm
     {
-        public IDbTypeMapper TypeMapper { get; }
+        public IEnumerable<Table> GetTables(Assembly assembly);
 
-        public void CreateTables();
+        public string GetTableSql(IEnumerable<Table> tables);
     }
 }

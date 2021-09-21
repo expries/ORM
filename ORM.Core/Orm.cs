@@ -1,7 +1,7 @@
-using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using System.Text;
 using ORM.Core.Helpers;
 using ORM.Core.Models;
 using ORM.Core.SqlDialects;
@@ -10,47 +10,78 @@ namespace ORM.Core
 {
     public class Orm : IOrm
     {
-        private readonly Assembly _assembly;
-
         private readonly ISqlDialect _sqlDialect;
 
-        public IDbTypeMapper TypeMapper { get; }
+        private readonly StringBuilder _stringBuilder;
 
-        public Orm(Assembly assembly, ISqlDialect dialect, IDbTypeMapper typeMapper)
+        public Orm(ISqlDialect dialect)
         {
-            _assembly = assembly;
             _sqlDialect = dialect;
-            TypeMapper = typeMapper;
+            _stringBuilder = new StringBuilder();
+        }
+        
+        public IEnumerable<Table> GetTables(Assembly assembly)
+        {
+            var entityTypes = AssemblyScanner.GetEntityTypes(assembly);
+            var tables = entityTypes.Select(t => new EntityTable(t)).ToList();
+            return tables;
         }
 
-        public void CreateTables()
+        public string GetTableSql(IEnumerable<Table> tables)
         {
-            var entityTypes = AssemblyScanner.GetEntityTypes(_assembly);
-            var tables = entityTypes.Select(t => new Table(TypeMapper, t)).ToList();
+            var sqlBuilder = new StringBuilder();
+            var tablesToBeCreated = GetTablesToBeCreated(tables).ToList();
+            var tableFk = GetForeignKeyPerTable(tablesToBeCreated);
 
-            var tableDict = new Dictionary<string, Table>();
+            TranslateTablesToSql(tablesToBeCreated);
+            TranslateForeignKeysToSql(tableFk);
+
+            return sqlBuilder.ToString();
+        }
+
+        private void TranslateTablesToSql(IEnumerable<Table> tables)
+        {
+            foreach (var table in tables)
+            {
+                string tableSql = _sqlDialect.TableToSql(table);
+                _stringBuilder.Append(tableSql);
+            }
+        }
+
+        private void TranslateForeignKeysToSql(Dictionary<Table, List<ForeignKeyConstraint>> fkTable)
+        {
+            foreach ((var table, var fkList) in fkTable)
+            {
+                var foreignKeySql = fkList.Select(fk => _sqlDialect.ForeignKeyToSql(fk, table));
+                foreignKeySql.ToList().ForEach(sql => _stringBuilder.Append(sql));
+            }
+        }
+
+        private static Dictionary<Table, List<ForeignKeyConstraint>> GetForeignKeyPerTable(IEnumerable<Table> tables)
+        {
             var tableFk = new Dictionary<Table, List<ForeignKeyConstraint>>();
+            
+            foreach (var table in tables)
+            {
+                tableFk[table] = new List<ForeignKeyConstraint>();
+                table.ForeignKeys.ToList().ForEach(fk => tableFk[table].Add(fk));
+            }
+
+            return tableFk;
+        }
+
+        private static IEnumerable<Table> GetTablesToBeCreated(IEnumerable<Table> tables)
+        {
+            var tablesToBeCreated = new Dictionary<string, Table>();
 
             foreach (var table in tables)
             {
-                tableDict[table.Name] = table;
-                table.Relationships.Values.ToList().ForEach(tr => tableDict[tr.Table.Name] = tr.Table);
-                table.ForeignKeys.ForEach(fk => tableDict[fk.TableTo.Name] = fk.TableTo);
-            }
-            
-            foreach (var (_, table) in tableDict)
-            {
-                string tableSql = _sqlDialect.TableToSql(table);
-                Console.WriteLine(tableSql);
-                tableFk[table] = new List<ForeignKeyConstraint>();
-                table.ForeignKeys.ForEach(fk => tableFk[table].Add(fk));
+                tablesToBeCreated[table.Name] = table;
+                table.Relationships.ToList().ForEach(tr => tablesToBeCreated[tr.Table.Name] = tr.Table);
+                table.ForeignKeys.ToList().ForEach(fk => tablesToBeCreated[fk.TableTo.Name] = fk.TableTo);
             }
 
-            foreach ((var table, var fkList) in tableFk)
-            {
-                var foreignKeySql = fkList.Select(fk => _sqlDialect.ForeignKeyToSql(fk, table));
-                foreignKeySql.ToList().ForEach(sql => Console.WriteLine(sql));
-            }
+            return tablesToBeCreated.Values;
         }
     }
 }

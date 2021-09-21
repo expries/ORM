@@ -1,43 +1,46 @@
 using System;
+using System.Collections.Generic;
 using System.Reflection;
-using ORM.Core.DataTypes;
-using ORM.Infrastructure.Attributes;
-using ORM.Infrastructure.Exceptions;
+using ORM.Core.Attributes;
 
 namespace ORM.Core.Models
 {
     public class Column
     {
-        public string Name { get; set; }
+        public string Name { get; private set; }
         
-        public IDbDataType Type { get; set; }
+        public Type Type { get; private set; }
 
-        public bool IsPrimaryKey { get; set; }
+        public bool IsPrimaryKey { get; private set; }
 
-        public bool IsUnique { get; set; }
+        public bool IsUnique { get; private set; }
 
-        public bool IsNullable { get; set; } = true;
+        public bool IsNullable { get; private set; }
         
-        public bool IsForeignKey { get; set; }
+        public bool IsForeignKey { get; private set; }
 
-        public Column(PropertyInfo property, IDbDataType type)
-        {
-            Name = property.Name;
-            Type = type;
-            ReadProperty(property);
-        }
+        public int? MaxLength { get; private set; }
 
-        public Column(string name, IDbDataType type)
+        public Column(string name, Type type, bool isForeignKey = false, bool isNullable = true)
         {
             Name = name;
             Type = type;
+            IsForeignKey = isForeignKey;
+            IsNullable = isNullable;
+        }
+        
+        public Column(PropertyInfo property)
+        {
+            Name = property.Name;
+            Type = property.PropertyType;
+            ReadAttributes(property);
         }
 
-        private void ReadProperty(PropertyInfo property)
+        private void ReadAttributes(PropertyInfo property)
         {
-            var attributes = property.GetCustomAttributes();
+            IEnumerable<Attribute> attributes = property.GetCustomAttributes();
 
-            foreach (var attribute in attributes)
+            foreach (Attribute attribute in attributes)
             {
                 ReadAttribute(attribute);
             }
@@ -62,13 +65,7 @@ namespace ORM.Core.Models
 
             if (attribute is MaxLengthAttribute maxLengthAttribute)
             {
-                if (Type is not IDbMaxLengthType lengthType)
-                {
-                    throw new InvalidAttributeUsageException(
-                        $"Cannot apply attribute MaxLength on type '{Type.GetType().Name}'");
-                }
-
-                lengthType.Length = maxLengthAttribute.Length;
+                MaxLength = maxLengthAttribute.Length;
             }
         }
     }

@@ -1,6 +1,6 @@
 namespace ORM.Core.DataTypes
 {
-    public interface IDbMaxLengthType : IDbDataType
+    public interface IDbMaxLengthDbType : IDbType
     {
         public int Length { get; set; }
     }

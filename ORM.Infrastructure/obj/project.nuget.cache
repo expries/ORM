@@ -1,8 +1,8 @@
 {
   "version": 2,
-  "dgSpecHash": "tIXyv903nGrFQJqN2UqDdzfdQST4mmrdaq2OcDNRb2Qpm3RbRTmxU137xk2SpUo+eI4NXvIMv6Qe4TPBp1vFBg==",
+  "dgSpecHash": "BYPDHfUpwdTegAessIs0kfHKrZLzXT17o4kWMXL6lUTv6ub+Ub+h3mIDYVOQS0YP84cqAiKDR/PCf9Xr+PIhzg==",
   "success": true,
-  "projectFilePath": "/root/RiderProjects/ORM/ORM.Infrastructure/ORM.Infrastructure.csproj",
+  "projectFilePath": "D:\\ORM\\ORM.Infrastructure\\ORM.Infrastructure.csproj",
   "expectedPackageFiles": [],
   "logs": []
 }

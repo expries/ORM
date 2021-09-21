@@ -5,24 +5,11 @@
       "ORM.Core/1.0.0": {
         "type": "project",
         "framework": ".NETCoreApp,Version=v5.0",
-        "dependencies": {
-          "ORM.Infrastructure": "1.0.0"
-        },
         "compile": {
           "bin/placeholder/ORM.Core.dll": {}
         },
         "runtime": {
           "bin/placeholder/ORM.Core.dll": {}
-        }
-      },
-      "ORM.Infrastructure/1.0.0": {
-        "type": "project",
-        "framework": ".NETCoreApp,Version=v5.0",
-        "compile": {
-          "bin/placeholder/ORM.Infrastructure.dll": {}
-        },
-        "runtime": {
-          "bin/placeholder/ORM.Infrastructure.dll": {}
         }
       }
     }
@@ -32,11 +19,6 @@
       "type": "project",
       "path": "../ORM.Core/ORM.Core.csproj",
       "msbuildProject": "../ORM.Core/ORM.Core.csproj"
-    },
-    "ORM.Infrastructure/1.0.0": {
-      "type": "project",
-      "path": "../ORM.Infrastructure/ORM.Infrastructure.csproj",
-      "msbuildProject": "../ORM.Infrastructure/ORM.Infrastructure.csproj"
     }
   },
   "projectFileDependencyGroups": {
@@ -45,32 +27,34 @@
     ]
   },
   "packageFolders": {
-    "/root/.nuget/packages/": {}
+    "C:\\Users\\Samuel\\.nuget\\packages\\": {}
   },
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "/root/RiderProjects/ORM/ORM.Postgres/ORM.Postgres.csproj",
+      "projectUniqueName": "D:\\ORM\\ORM.Postgres\\ORM.Postgres.csproj",
       "projectName": "ORM.Postgres",
-      "projectPath": "/root/RiderProjects/ORM/ORM.Postgres/ORM.Postgres.csproj",
-      "packagesPath": "/root/.nuget/packages/",
-      "outputPath": "/root/RiderProjects/ORM/ORM.Postgres/obj/",
+      "projectPath": "D:\\ORM\\ORM.Postgres\\ORM.Postgres.csproj",
+      "packagesPath": "C:\\Users\\Samuel\\.nuget\\packages\\",
+      "outputPath": "D:\\ORM\\ORM.Postgres\\obj\\",
       "projectStyle": "PackageReference",
       "configFilePaths": [
-        "/root/.nuget/NuGet/NuGet.Config"
+        "C:\\Users\\Samuel\\AppData\\Roaming\\NuGet\\NuGet.Config",
+        "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
       ],
       "originalTargetFrameworks": [
         "net5.0"
       ],
       "sources": {
+        "C:\\Program Files (x86)\\Microsoft SDKs\\NuGetPackages\\": {},
         "https://api.nuget.org/v3/index.json": {}
       },
       "frameworks": {
         "net5.0": {
           "targetAlias": "net5.0",
           "projectReferences": {
-            "/root/RiderProjects/ORM/ORM.Core/ORM.Core.csproj": {
-              "projectPath": "/root/RiderProjects/ORM/ORM.Core/ORM.Core.csproj"
+            "D:\\ORM\\ORM.Core\\ORM.Core.csproj": {
+              "projectPath": "D:\\ORM\\ORM.Core\\ORM.Core.csproj"
             }
           }
         }
@@ -99,7 +83,7 @@
             "privateAssets": "all"
           }
         },
-        "runtimeIdentifierGraphPath": "/usr/share/dotnet/sdk/5.0.400/RuntimeIdentifierGraph.json"
+        "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\5.0.302\\RuntimeIdentifierGraph.json"
       }
     }
   }
