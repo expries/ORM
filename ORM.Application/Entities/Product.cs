@@ -1,5 +1,5 @@
 using System;
-using ORM.Infrastructure.Attributes;
+using ORM.Core.Attributes;
 
 namespace ORM.Application.Entities
 {

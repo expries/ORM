@@ -2,11 +2,11 @@ using ORM.Core.DataTypes;
 
 namespace ORM.Postgres.DataTypes
 {
-    public class PostgresDataType : IDbDataType
+    public class PostgresDataDbType : IDbType
     {
         protected string Name { get; set; }
 
-        protected PostgresDataType(string name)
+        protected PostgresDataDbType(string name)
         {
             Name = name.ToUpper();
         }

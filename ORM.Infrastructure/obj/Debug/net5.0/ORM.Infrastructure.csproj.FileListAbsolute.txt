@@ -10,3 +10,15 @@
 /root/RiderProjects/ORM/ORM.Infrastructure/obj/Debug/net5.0/ORM.Infrastructure.dll
 /root/RiderProjects/ORM/ORM.Infrastructure/obj/Debug/net5.0/ref/ORM.Infrastructure.dll
 /root/RiderProjects/ORM/ORM.Infrastructure/obj/Debug/net5.0/ORM.Infrastructure.pdb
+D:\ORM\ORM.Infrastructure\bin\Debug\net5.0\ORM.Infrastructure.deps.json
+D:\ORM\ORM.Infrastructure\bin\Debug\net5.0\ORM.Infrastructure.dll
+D:\ORM\ORM.Infrastructure\bin\Debug\net5.0\ref\ORM.Infrastructure.dll
+D:\ORM\ORM.Infrastructure\bin\Debug\net5.0\ORM.Infrastructure.pdb
+D:\ORM\ORM.Infrastructure\obj\Debug\net5.0\ORM.Infrastructure.csproj.AssemblyReference.cache
+D:\ORM\ORM.Infrastructure\obj\Debug\net5.0\ORM.Infrastructure.GeneratedMSBuildEditorConfig.editorconfig
+D:\ORM\ORM.Infrastructure\obj\Debug\net5.0\ORM.Infrastructure.AssemblyInfoInputs.cache
+D:\ORM\ORM.Infrastructure\obj\Debug\net5.0\ORM.Infrastructure.AssemblyInfo.cs
+D:\ORM\ORM.Infrastructure\obj\Debug\net5.0\ORM.Infrastructure.csproj.CoreCompileInputs.cache
+D:\ORM\ORM.Infrastructure\obj\Debug\net5.0\ORM.Infrastructure.dll
+D:\ORM\ORM.Infrastructure\obj\Debug\net5.0\ref\ORM.Infrastructure.dll
+D:\ORM\ORM.Infrastructure\obj\Debug\net5.0\ORM.Infrastructure.pdb

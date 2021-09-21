@@ -8,7 +8,12 @@
     <ItemGroup>
       <ProjectReference Include="..\ORM.Core\ORM.Core.csproj" />
       <ProjectReference Include="..\ORM.Infrastructure\ORM.Infrastructure.csproj" />
+      <ProjectReference Include="..\ORM.LinqProvider\ORM.LinqProvider.csproj" />
       <ProjectReference Include="..\ORM.Postgres\ORM.Postgres.csproj" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <PackageReference Include="Newtonsoft.Json" Version="13.0.1" />
     </ItemGroup>
 
 </Project>

@@ -1,5 +1,6 @@
 using System;
 using System.Text;
+using ORM.Core.DataTypes;
 using ORM.Core.Models;
 using ORM.Core.SqlDialects;
 
@@ -7,9 +8,16 @@ namespace ORM.Postgres.SqlDialect
 {
     public class PostgreSqlDialect : ISqlDialect
     {
+        private readonly IDbTypeMapper _typeMapper;
+        
+        public PostgreSqlDialect(IDbTypeMapper typeMapper)
+        {
+            _typeMapper = typeMapper;
+        }
+        
         public string ForeignKeyToSql(ForeignKeyConstraint foreignKeyConstraint, Table table)
         {
-            var sb = new StringBuilder();
+            StringBuilder sb = new StringBuilder();
             
             sb
                 .Append("ALTER TABLE")
@@ -29,14 +37,15 @@ namespace ORM.Postgres.SqlDialect
                 .Append('(')
                 .Append(foreignKeyConstraint.ColumnTo.Name)
                 .Append(')')
-                .Append(';');
+                .Append(';')
+                .Append(Environment.NewLine);
 
             return sb.ToString();
         }
 
         public string TableToSql(Table table)
         {
-            var sb = new StringBuilder();
+            StringBuilder sb = new StringBuilder();
             
             sb
                 .Append($"CREATE TABLE {table.Name}")
@@ -44,9 +53,10 @@ namespace ORM.Postgres.SqlDialect
                 .Append('(')
                 .Append(Environment.NewLine);
 
-            for (int i = 0; i < table.Columns.Count; i++)
+            int i = 0;
+            
+            foreach (var column in table.Columns)
             {
-                var column = table.Columns[i];
                 sb.Append('\t');
                 ColumnToSql(column, sb);
                 
@@ -56,18 +66,31 @@ namespace ORM.Postgres.SqlDialect
                 }
 
                 sb.Append(Environment.NewLine);
+                i++;
             }
 
-            sb.Append(')').Append(';');
+            sb
+                .Append(')')
+                .Append(';')
+                .Append(Environment.NewLine);
+            
             return sb.ToString();
         }
 
         private void ColumnToSql(Column column, StringBuilder sb)
         {
+            IDbType dbType = _typeMapper.Map(column.Type);
+            
+            if (column.MaxLength.HasValue && dbType is IDbMaxLengthDbType maxLengthType)
+            {
+                maxLengthType.Length = column.MaxLength.Value;
+                dbType = maxLengthType;
+            }
+
             sb
                 .Append(column.Name)
                 .Append(' ')
-                .Append(column.Type);
+                .Append(dbType);
 
             if (column.IsPrimaryKey)
             {

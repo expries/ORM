@@ -2,10 +2,17 @@ namespace ORM.Core.Models
 {
     public class ForeignKeyConstraint
     {
-        public Column ColumnFrom { get; set; }
+        public Column ColumnFrom { get; }
         
-        public Column ColumnTo { get; set; }
+        public Column ColumnTo { get; }
 
-        public Table TableTo { get; set; }
+        public Table TableTo { get; }
+
+        public ForeignKeyConstraint(Column columnFrom, Column columnTo, Table tableTo)
+        {
+            ColumnFrom = columnFrom;
+            ColumnTo = columnTo;
+            TableTo = tableTo;
+        }
     }
 }

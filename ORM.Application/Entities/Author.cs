@@ -1,5 +1,5 @@
 using System.Collections.Generic;
-using ORM.Infrastructure.Attributes;
+using ORM.Core.Attributes;
 
 namespace ORM.Application.Entities
 {

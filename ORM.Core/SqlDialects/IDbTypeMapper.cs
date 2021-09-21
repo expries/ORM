@@ -5,6 +5,6 @@ namespace ORM.Core.SqlDialects
 {
     public interface IDbTypeMapper
     {
-        public IDbDataType Map(Type type);
+        public IDbType Map(Type type);
     }
 }

@@ -1,39 +1,44 @@
 {
   "format": 1,
   "restore": {
-    "/root/RiderProjects/ORM/ORM.Application/ORM.Application.csproj": {}
+    "D:\\ORM\\ORM.Application\\ORM.Application.csproj": {}
   },
   "projects": {
-    "/root/RiderProjects/ORM/ORM.Application/ORM.Application.csproj": {
+    "D:\\ORM\\ORM.Application\\ORM.Application.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "/root/RiderProjects/ORM/ORM.Application/ORM.Application.csproj",
+        "projectUniqueName": "D:\\ORM\\ORM.Application\\ORM.Application.csproj",
         "projectName": "ORM.Application",
-        "projectPath": "/root/RiderProjects/ORM/ORM.Application/ORM.Application.csproj",
-        "packagesPath": "/root/.nuget/packages/",
-        "outputPath": "/root/RiderProjects/ORM/ORM.Application/obj/",
+        "projectPath": "D:\\ORM\\ORM.Application\\ORM.Application.csproj",
+        "packagesPath": "C:\\Users\\Samuel\\.nuget\\packages\\",
+        "outputPath": "D:\\ORM\\ORM.Application\\obj\\",
         "projectStyle": "PackageReference",
         "configFilePaths": [
-          "/root/.nuget/NuGet/NuGet.Config"
+          "C:\\Users\\Samuel\\AppData\\Roaming\\NuGet\\NuGet.Config",
+          "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
         ],
         "originalTargetFrameworks": [
           "net5.0"
         ],
         "sources": {
+          "C:\\Program Files (x86)\\Microsoft SDKs\\NuGetPackages\\": {},
           "https://api.nuget.org/v3/index.json": {}
         },
         "frameworks": {
           "net5.0": {
             "targetAlias": "net5.0",
             "projectReferences": {
-              "/root/RiderProjects/ORM/ORM.Core/ORM.Core.csproj": {
-                "projectPath": "/root/RiderProjects/ORM/ORM.Core/ORM.Core.csproj"
+              "D:\\ORM\\ORM.Core\\ORM.Core.csproj": {
+                "projectPath": "D:\\ORM\\ORM.Core\\ORM.Core.csproj"
               },
-              "/root/RiderProjects/ORM/ORM.Infrastructure/ORM.Infrastructure.csproj": {
-                "projectPath": "/root/RiderProjects/ORM/ORM.Infrastructure/ORM.Infrastructure.csproj"
+              "D:\\ORM\\ORM.Infrastructure\\ORM.Infrastructure.csproj": {
+                "projectPath": "D:\\ORM\\ORM.Infrastructure\\ORM.Infrastructure.csproj"
               },
-              "/root/RiderProjects/ORM/ORM.Postgres/ORM.Postgres.csproj": {
-                "projectPath": "/root/RiderProjects/ORM/ORM.Postgres/ORM.Postgres.csproj"
+              "D:\\ORM\\ORM.LinqProvider\\ORM.LinqProvider.csproj": {
+                "projectPath": "D:\\ORM\\ORM.LinqProvider\\ORM.LinqProvider.csproj"
+              },
+              "D:\\ORM\\ORM.Postgres\\ORM.Postgres.csproj": {
+                "projectPath": "D:\\ORM\\ORM.Postgres\\ORM.Postgres.csproj"
               }
             }
           }
@@ -47,6 +52,12 @@
       "frameworks": {
         "net5.0": {
           "targetAlias": "net5.0",
+          "dependencies": {
+            "Newtonsoft.Json": {
+              "target": "Package",
+              "version": "[13.0.1, )"
+            }
+          },
           "imports": [
             "net461",
             "net462",
@@ -62,82 +73,28 @@
               "privateAssets": "all"
             }
           },
-          "runtimeIdentifierGraphPath": "/usr/share/dotnet/sdk/5.0.400/RuntimeIdentifierGraph.json"
+          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\5.0.302\\RuntimeIdentifierGraph.json"
         }
       }
     },
-    "/root/RiderProjects/ORM/ORM.Core/ORM.Core.csproj": {
+    "D:\\ORM\\ORM.Core\\ORM.Core.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "/root/RiderProjects/ORM/ORM.Core/ORM.Core.csproj",
+        "projectUniqueName": "D:\\ORM\\ORM.Core\\ORM.Core.csproj",
         "projectName": "ORM.Core",
-        "projectPath": "/root/RiderProjects/ORM/ORM.Core/ORM.Core.csproj",
-        "packagesPath": "/root/.nuget/packages/",
-        "outputPath": "/root/RiderProjects/ORM/ORM.Core/obj/",
+        "projectPath": "D:\\ORM\\ORM.Core\\ORM.Core.csproj",
+        "packagesPath": "C:\\Users\\Samuel\\.nuget\\packages\\",
+        "outputPath": "D:\\ORM\\ORM.Core\\obj\\",
         "projectStyle": "PackageReference",
         "configFilePaths": [
-          "/root/.nuget/NuGet/NuGet.Config"
+          "C:\\Users\\Samuel\\AppData\\Roaming\\NuGet\\NuGet.Config",
+          "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
         ],
         "originalTargetFrameworks": [
           "net5.0"
         ],
         "sources": {
-          "https://api.nuget.org/v3/index.json": {}
-        },
-        "frameworks": {
-          "net5.0": {
-            "targetAlias": "net5.0",
-            "projectReferences": {
-              "/root/RiderProjects/ORM/ORM.Infrastructure/ORM.Infrastructure.csproj": {
-                "projectPath": "/root/RiderProjects/ORM/ORM.Infrastructure/ORM.Infrastructure.csproj"
-              }
-            }
-          }
-        },
-        "warningProperties": {
-          "warnAsError": [
-            "NU1605"
-          ]
-        }
-      },
-      "frameworks": {
-        "net5.0": {
-          "targetAlias": "net5.0",
-          "imports": [
-            "net461",
-            "net462",
-            "net47",
-            "net471",
-            "net472",
-            "net48"
-          ],
-          "assetTargetFallback": true,
-          "warn": true,
-          "frameworkReferences": {
-            "Microsoft.NETCore.App": {
-              "privateAssets": "all"
-            }
-          },
-          "runtimeIdentifierGraphPath": "/usr/share/dotnet/sdk/5.0.400/RuntimeIdentifierGraph.json"
-        }
-      }
-    },
-    "/root/RiderProjects/ORM/ORM.Infrastructure/ORM.Infrastructure.csproj": {
-      "version": "1.0.0",
-      "restore": {
-        "projectUniqueName": "/root/RiderProjects/ORM/ORM.Infrastructure/ORM.Infrastructure.csproj",
-        "projectName": "ORM.Infrastructure",
-        "projectPath": "/root/RiderProjects/ORM/ORM.Infrastructure/ORM.Infrastructure.csproj",
-        "packagesPath": "/root/.nuget/packages/",
-        "outputPath": "/root/RiderProjects/ORM/ORM.Infrastructure/obj/",
-        "projectStyle": "PackageReference",
-        "configFilePaths": [
-          "/root/.nuget/NuGet/NuGet.Config"
-        ],
-        "originalTargetFrameworks": [
-          "net5.0"
-        ],
-        "sources": {
+          "C:\\Program Files (x86)\\Microsoft SDKs\\NuGetPackages\\": {},
           "https://api.nuget.org/v3/index.json": {}
         },
         "frameworks": {
@@ -170,34 +127,36 @@
               "privateAssets": "all"
             }
           },
-          "runtimeIdentifierGraphPath": "/usr/share/dotnet/sdk/5.0.400/RuntimeIdentifierGraph.json"
+          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\5.0.302\\RuntimeIdentifierGraph.json"
         }
       }
     },
-    "/root/RiderProjects/ORM/ORM.Postgres/ORM.Postgres.csproj": {
+    "D:\\ORM\\ORM.Infrastructure\\ORM.Infrastructure.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "/root/RiderProjects/ORM/ORM.Postgres/ORM.Postgres.csproj",
-        "projectName": "ORM.Postgres",
-        "projectPath": "/root/RiderProjects/ORM/ORM.Postgres/ORM.Postgres.csproj",
-        "packagesPath": "/root/.nuget/packages/",
-        "outputPath": "/root/RiderProjects/ORM/ORM.Postgres/obj/",
+        "projectUniqueName": "D:\\ORM\\ORM.Infrastructure\\ORM.Infrastructure.csproj",
+        "projectName": "ORM.Infrastructure",
+        "projectPath": "D:\\ORM\\ORM.Infrastructure\\ORM.Infrastructure.csproj",
+        "packagesPath": "C:\\Users\\Samuel\\.nuget\\packages\\",
+        "outputPath": "D:\\ORM\\ORM.Infrastructure\\obj\\",
         "projectStyle": "PackageReference",
         "configFilePaths": [
-          "/root/.nuget/NuGet/NuGet.Config"
+          "C:\\Users\\Samuel\\AppData\\Roaming\\NuGet\\NuGet.Config",
+          "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
         ],
         "originalTargetFrameworks": [
           "net5.0"
         ],
         "sources": {
+          "C:\\Program Files (x86)\\Microsoft SDKs\\NuGetPackages\\": {},
           "https://api.nuget.org/v3/index.json": {}
         },
         "frameworks": {
           "net5.0": {
             "targetAlias": "net5.0",
             "projectReferences": {
-              "/root/RiderProjects/ORM/ORM.Core/ORM.Core.csproj": {
-                "projectPath": "/root/RiderProjects/ORM/ORM.Core/ORM.Core.csproj"
+              "D:\\ORM\\ORM.Core\\ORM.Core.csproj": {
+                "projectPath": "D:\\ORM\\ORM.Core\\ORM.Core.csproj"
               }
             }
           }
@@ -226,7 +185,123 @@
               "privateAssets": "all"
             }
           },
-          "runtimeIdentifierGraphPath": "/usr/share/dotnet/sdk/5.0.400/RuntimeIdentifierGraph.json"
+          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\5.0.302\\RuntimeIdentifierGraph.json"
+        }
+      }
+    },
+    "D:\\ORM\\ORM.LinqProvider\\ORM.LinqProvider.csproj": {
+      "version": "1.0.0",
+      "restore": {
+        "projectUniqueName": "D:\\ORM\\ORM.LinqProvider\\ORM.LinqProvider.csproj",
+        "projectName": "ORM.LinqProvider",
+        "projectPath": "D:\\ORM\\ORM.LinqProvider\\ORM.LinqProvider.csproj",
+        "packagesPath": "C:\\Users\\Samuel\\.nuget\\packages\\",
+        "outputPath": "D:\\ORM\\ORM.LinqProvider\\obj\\",
+        "projectStyle": "PackageReference",
+        "configFilePaths": [
+          "C:\\Users\\Samuel\\AppData\\Roaming\\NuGet\\NuGet.Config",
+          "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
+        ],
+        "originalTargetFrameworks": [
+          "net5.0"
+        ],
+        "sources": {
+          "C:\\Program Files (x86)\\Microsoft SDKs\\NuGetPackages\\": {},
+          "https://api.nuget.org/v3/index.json": {}
+        },
+        "frameworks": {
+          "net5.0": {
+            "targetAlias": "net5.0",
+            "projectReferences": {
+              "D:\\ORM\\ORM.Core\\ORM.Core.csproj": {
+                "projectPath": "D:\\ORM\\ORM.Core\\ORM.Core.csproj"
+              }
+            }
+          }
+        },
+        "warningProperties": {
+          "warnAsError": [
+            "NU1605"
+          ]
+        }
+      },
+      "frameworks": {
+        "net5.0": {
+          "targetAlias": "net5.0",
+          "imports": [
+            "net461",
+            "net462",
+            "net47",
+            "net471",
+            "net472",
+            "net48"
+          ],
+          "assetTargetFallback": true,
+          "warn": true,
+          "frameworkReferences": {
+            "Microsoft.NETCore.App": {
+              "privateAssets": "all"
+            }
+          },
+          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\5.0.302\\RuntimeIdentifierGraph.json"
+        }
+      }
+    },
+    "D:\\ORM\\ORM.Postgres\\ORM.Postgres.csproj": {
+      "version": "1.0.0",
+      "restore": {
+        "projectUniqueName": "D:\\ORM\\ORM.Postgres\\ORM.Postgres.csproj",
+        "projectName": "ORM.Postgres",
+        "projectPath": "D:\\ORM\\ORM.Postgres\\ORM.Postgres.csproj",
+        "packagesPath": "C:\\Users\\Samuel\\.nuget\\packages\\",
+        "outputPath": "D:\\ORM\\ORM.Postgres\\obj\\",
+        "projectStyle": "PackageReference",
+        "configFilePaths": [
+          "C:\\Users\\Samuel\\AppData\\Roaming\\NuGet\\NuGet.Config",
+          "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
+        ],
+        "originalTargetFrameworks": [
+          "net5.0"
+        ],
+        "sources": {
+          "C:\\Program Files (x86)\\Microsoft SDKs\\NuGetPackages\\": {},
+          "https://api.nuget.org/v3/index.json": {}
+        },
+        "frameworks": {
+          "net5.0": {
+            "targetAlias": "net5.0",
+            "projectReferences": {
+              "D:\\ORM\\ORM.Core\\ORM.Core.csproj": {
+                "projectPath": "D:\\ORM\\ORM.Core\\ORM.Core.csproj"
+              }
+            }
+          }
+        },
+        "warningProperties": {
+          "warnAsError": [
+            "NU1605"
+          ]
+        }
+      },
+      "frameworks": {
+        "net5.0": {
+          "targetAlias": "net5.0",
+          "imports": [
+            "net461",
+            "net462",
+            "net47",
+            "net471",
+            "net472",
+            "net48"
+          ],
+          "assetTargetFallback": true,
+          "warn": true,
+          "frameworkReferences": {
+            "Microsoft.NETCore.App": {
+              "privateAssets": "all"
+            }
+          },
+          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\5.0.302\\RuntimeIdentifierGraph.json"
         }
       }
     }

@@ -2,11 +2,11 @@ using ORM.Core.DataTypes;
 
 namespace ORM.Postgres.DataTypes
 {
-    public class PostgresLengthRestrictedType : PostgresDataType, IDbMaxLengthType
+    public class PostgresLengthRestrictedDbType : PostgresDataDbType, IDbMaxLengthDbType
     {
         public int Length { get; set; }
         
-        protected PostgresLengthRestrictedType(string name, int length) : base(name)
+        protected PostgresLengthRestrictedDbType(string name, int length) : base(name)
         {
             Length = length;
         }

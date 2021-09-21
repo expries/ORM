@@ -1,5 +1,5 @@
 using ORM.Application.Entities;
-using ORM.Infrastructure.Database;
+using ORM.Core.Database;
 
 namespace ORM.Application.DbContexts
 {
