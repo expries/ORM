@@ -39,14 +39,14 @@ namespace ORM.Core.Models
 
         protected void AddColumn(PropertyInfo property)
         {
-            Column column = new Column(property);
+            var column = new Column(property);
             Columns.Add(column);
         }
 
         protected void AddForeignKey(string fkName, Table other, bool nullable)
         {
             var pkColumn = other.Columns.First(c => c.IsPrimaryKey);
-            Column fkColumn = new Column(fkName, pkColumn.Type, isForeignKey: true, isNullable: nullable);
+            var fkColumn = new Column(fkName, pkColumn.Type, isForeignKey: true, isNullable: nullable);
             var foreignKeyConstraint = new ForeignKeyConstraint(fkColumn, pkColumn, other);
 
             Columns.Add(fkColumn);

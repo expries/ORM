@@ -49,7 +49,7 @@ namespace ORM.Application
             var dbSet = new DbSet<Book>(provider);
 
             //var r = dbSet.Where(x => x.Title == "Sam").ToList();
-            var r = dbSet.Where(x => x.Price > 0).Count();
+            var r = dbSet.Where(x => x.Price > 0).OrderBy(x => x.Likes).ToList();
         }
     }
 }
