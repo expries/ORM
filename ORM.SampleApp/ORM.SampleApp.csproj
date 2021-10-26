@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <OutputType>Exe</OutputType>
+        <TargetFramework>net5.0</TargetFramework>
+        <RootNamespace>ORM.Application</RootNamespace>
+    </PropertyGroup>
+
+    <ItemGroup>
+      <ProjectReference Include="..\ORM.Core.Models\ORM.Core.Models.csproj" />
+      <ProjectReference Include="..\ORM.Core\ORM.Core.csproj" />
+      <ProjectReference Include="..\ORM.Linq\ORM.Linq.csproj" />
+      <ProjectReference Include="..\ORM.Postgres\ORM.Postgres.csproj" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <PackageReference Include="Newtonsoft.Json" Version="13.0.1" />
+      <PackageReference Include="Npgsql" Version="6.0.0-rc.2" />
+      <PackageReference Include="System.Data.SQLite" Version="1.0.115" />
+    </ItemGroup>
+
+</Project>

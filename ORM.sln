@@ -2,11 +2,19 @@
 Microsoft Visual Studio Solution File, Format Version 12.00
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ORM.Core", "ORM.Core\ORM.Core.csproj", "{B2E251E5-5008-4E94-859D-0D72F206D56B}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ORM.Application", "ORM.Application\ORM.Application.csproj", "{D146AA0F-9D68-403D-8538-D7DCF03F0010}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ORM.SampleApp", "ORM.SampleApp\ORM.SampleApp.csproj", "{D146AA0F-9D68-403D-8538-D7DCF03F0010}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ORM.Postgres", "ORM.Postgres\ORM.Postgres.csproj", "{36D52EAD-529F-4C72-AEAA-504D00867AEF}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ORM.LinqProvider", "ORM.LinqProvider\ORM.LinqProvider.csproj", "{9783CCEB-E282-4D7B-89C2-94DA8415B07F}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ORM.Linq", "ORM.Linq\ORM.Linq.csproj", "{9783CCEB-E282-4D7B-89C2-94DA8415B07F}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ORM.Core.Interfaces", "ORM.Core.Interfaces\ORM.Core.Interfaces.csproj", "{3BC5629C-ED3A-411F-BAC7-78AF05D046A5}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ORM.Core.Models", "ORM.Core.Models\ORM.Core.Models.csproj", "{2D3730E4-2D64-407A-998B-A58E98C6F67E}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ORM.Linq.Interfaces", "ORM.Linq.Interfaces\ORM.Linq.Interfaces.csproj", "{0B47318A-4128-4E55-88C3-53FAA446AB33}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ORM.Postgres.Interfaces", "ORM.Postgres.Interfaces\ORM.Postgres.Interfaces.csproj", "{0BCC012F-A1D2-4392-A4FF-905FE88351FD}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -30,5 +38,21 @@ Global
 		{9783CCEB-E282-4D7B-89C2-94DA8415B07F}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{9783CCEB-E282-4D7B-89C2-94DA8415B07F}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{9783CCEB-E282-4D7B-89C2-94DA8415B07F}.Release|Any CPU.Build.0 = Release|Any CPU
+		{3BC5629C-ED3A-411F-BAC7-78AF05D046A5}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{3BC5629C-ED3A-411F-BAC7-78AF05D046A5}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{3BC5629C-ED3A-411F-BAC7-78AF05D046A5}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{3BC5629C-ED3A-411F-BAC7-78AF05D046A5}.Release|Any CPU.Build.0 = Release|Any CPU
+		{2D3730E4-2D64-407A-998B-A58E98C6F67E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{2D3730E4-2D64-407A-998B-A58E98C6F67E}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{2D3730E4-2D64-407A-998B-A58E98C6F67E}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{2D3730E4-2D64-407A-998B-A58E98C6F67E}.Release|Any CPU.Build.0 = Release|Any CPU
+		{0B47318A-4128-4E55-88C3-53FAA446AB33}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{0B47318A-4128-4E55-88C3-53FAA446AB33}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{0B47318A-4128-4E55-88C3-53FAA446AB33}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{0B47318A-4128-4E55-88C3-53FAA446AB33}.Release|Any CPU.Build.0 = Release|Any CPU
+		{0BCC012F-A1D2-4392-A4FF-905FE88351FD}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{0BCC012F-A1D2-4392-A4FF-905FE88351FD}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{0BCC012F-A1D2-4392-A4FF-905FE88351FD}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{0BCC012F-A1D2-4392-A4FF-905FE88351FD}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal
