@@ -9,7 +9,7 @@ namespace ORM.Core.Models
 {
     public class EntityTable : Table
     {
-        private Type Type { get; }
+        public Type Type { get; }
 
         private readonly List<EntityTable> _rootTables = new List<EntityTable>();
 

@@ -3,6 +3,7 @@ using System.Data;
 using System.Linq;
 using System.Linq.Expressions;
 using ORM.Core;
+using ORM.Core.Models.Exceptions;
 using ORM.Linq.Interfaces;
 
 namespace ORM.Linq
@@ -34,17 +35,22 @@ namespace ORM.Linq
 
         public T Execute<T>(Expression expression)
         {
-            return (T) Execute(expression);
+            dynamic result = Execute(expression);
+            return (T) result;
         }
 
         public object Execute(Expression expression)
         {
             string sql = Translate(expression);
+            
             var cmd = _connection.CreateCommand();
             cmd.CommandText = sql;
-            var reader = cmd.ExecuteReader();
-            var type = TypeSystem.GetElementType(expression.Type);
-            return 1;
+            var dataReader = cmd.ExecuteReader();
+            
+            var resultType = TypeSystem.GetElementType(expression.Type);
+            var readerType = typeof(ObjectReader<>).MakeGenericType(resultType);
+            object? reader = Activator.CreateInstance(readerType, dataReader);
+            return reader ?? throw new OrmException("Failed to create object reader instance");
         }
         
         private string Translate(Expression expression)

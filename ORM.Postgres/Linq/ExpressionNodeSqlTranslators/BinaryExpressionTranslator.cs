@@ -5,7 +5,7 @@ namespace ORM.Postgres.Linq.ExpressionNodeSqlTranslators
 {
     public class BinaryExpressionTranslator : ExpressionNodeTranslator<BinaryExpression>
     {
-        public BinaryExpressionTranslator(SqlQueryTranslator translator) : base(translator)
+        public BinaryExpressionTranslator(PostgresQueryTranslator translator) : base(translator)
         {
         }
 

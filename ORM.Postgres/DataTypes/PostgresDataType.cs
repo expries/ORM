@@ -2,7 +2,7 @@ using ORM.Postgres.Interfaces;
 
 namespace ORM.Postgres.DataTypes
 {
-    public class PostgresDataType : IDbType
+    internal class PostgresDataType : IDbType
     {
         protected string Name { get; set; }
 

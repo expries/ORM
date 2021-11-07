@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 using System.Diagnostics.CodeAnalysis;
 using ORM.Core.Models.Attributes;
 
@@ -21,6 +22,7 @@ namespace ORM.Application.Entities
         [NotNull]
         public int Purchases { get; set; }
         
+        [Column("Likings")]
         public int Likes { get; set; }
         
         public List<Author> Authors { get; set; }

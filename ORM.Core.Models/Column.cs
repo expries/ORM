@@ -55,6 +55,11 @@ namespace ORM.Core.Models
 
         private void ReadAttribute(Attribute attribute)
         {
+            if (attribute is ColumnAttribute columnAttribute)
+            {
+                Name = string.IsNullOrEmpty(columnAttribute.Name) ? Name : columnAttribute.Name;
+            }
+            
             if (attribute is KeyAttribute)
             {
                 IsPrimaryKey = true;

@@ -7,7 +7,7 @@ namespace ORM.Postgres.Linq.ExpressionNodeSqlTranslators
 {
     public class ConstantExpressionTranslator : ExpressionNodeTranslator<ConstantExpression>
     {
-        public ConstantExpressionTranslator(SqlQueryTranslator translator) : base(translator)
+        public ConstantExpressionTranslator(PostgresQueryTranslator translator) : base(translator)
         {
         }
 
