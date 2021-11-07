@@ -4,7 +4,7 @@ namespace ORM.Postgres.Linq.ExpressionNodeSqlTranslators
 {
     public class MemberExpressionTranslator : ExpressionNodeTranslator<MemberExpression>
     {
-        public MemberExpressionTranslator(SqlQueryTranslator translator) : base(translator)
+        public MemberExpressionTranslator(PostgresQueryTranslator translator) : base(translator)
         {
         }
 

@@ -10,5 +10,11 @@ namespace ORM.Core.Interfaces
         public string TranslateDropTables(IEnumerable<Table> tables);
 
         public string TranslateAddForeignKeys(IEnumerable<Table> tables);
+
+        public string TranslateSelect(EntityTable table);
+
+        public string TranslateSelectById(EntityTable table, object pk);
+
+        public string TranslateInsert<T>(EntityTable table, T entity);
     }
 }

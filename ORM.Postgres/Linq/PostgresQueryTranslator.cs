@@ -5,7 +5,7 @@ using ORM.Postgres.Linq.ExpressionNodeSqlTranslators;
 
 namespace ORM.Postgres.Linq
 {
-    public class SqlQueryTranslator : ExpressionVisitor, IQueryTranslator
+    public class PostgresQueryTranslator : ExpressionVisitor, IQueryTranslator
     {
         private readonly StringBuilder _sb = new StringBuilder();
 

@@ -1,6 +1,6 @@
 namespace ORM.Postgres.DataTypes
 {
-    public class PostgresDateTime : PostgresDataType
+    internal class PostgresDateTime : PostgresDataType
     {
         public PostgresDateTime() : base("TIMESTAMP")
         {

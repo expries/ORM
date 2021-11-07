@@ -19,16 +19,17 @@ namespace ORM.Application
             var typeMapper = new PostgresDataTypeMapper();
             var dialect = new PostgresSqlDialect(typeMapper);
             var orm = new DbContext(dialect, connection);
-
+            
             orm.EnsureCreated();
             
             
-            var translator = new SqlQueryTranslator();
+            var translator = new PostgresQueryTranslator();
             var provider = new QueryProvider(connection, translator);
             var dbSet = new DbSet<Book>(provider);
-            var result = dbSet.Where(x => x.Price > 0).OrderBy(x => x.Likes).ToList();
-            
-            int i = 0;
+
+            var book = new Book();
+            book.Title = "My Book :)";
+            orm.Save(book);
         }
     }
 }

@@ -4,7 +4,7 @@ namespace ORM.Postgres.Linq.ExpressionNodeSqlTranslators
 {
     public class MethodCallExpressionTranslator : ExpressionNodeTranslator<MethodCallExpression>
     {
-        public MethodCallExpressionTranslator(SqlQueryTranslator translator) : base(translator)
+        public MethodCallExpressionTranslator(PostgresQueryTranslator translator) : base(translator)
         {
         }
         

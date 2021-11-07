@@ -2,7 +2,7 @@ using ORM.Postgres.Interfaces;
 
 namespace ORM.Postgres.DataTypes
 {
-    public class PostgresLengthRestrictedType : PostgresDataType, IDbMaxLengthDbType
+    internal class PostgresLengthRestrictedType : PostgresDataType, IDbMaxLengthDbType
     {
         public int Length { get; set; }
         

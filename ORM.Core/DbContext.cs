@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Data;
 using System.Linq;
@@ -20,7 +21,7 @@ namespace ORM.Core
             _connection = connection;
         }
         
-        public void EnsureCreated(Assembly assembly = null)
+        public void EnsureCreated(Assembly? assembly = null)
         {
             assembly ??= Assembly.GetCallingAssembly();
             
@@ -34,11 +35,40 @@ namespace ORM.Core
             cmd.ExecuteNonQuery();
         }
 
-        public void Save(object entity)
+        public void Save<T>(T entity)
         {
-            throw new System.NotImplementedException();
+            var table = new EntityTable(typeof(T));
+            string sql = _sqlDialect.TranslateInsert(table, entity);
+            
+            var cmd = _connection.CreateCommand();
+            cmd.CommandText = sql;
+            cmd.ExecuteNonQuery();
         }
-        
+
+        public IEnumerable<T> GetAll<T>()
+        {
+            var entityTable = new EntityTable(typeof(T));
+            string sql  = _sqlDialect.TranslateSelect(entityTable);
+            
+            var cmd = _connection.CreateCommand();
+            cmd.CommandText = sql;
+            var reader = cmd.ExecuteReader();
+            
+            return new ObjectReader<T>(reader);
+        }
+
+        public T GetById<T>(object pk)
+        {
+            var entityTable = new EntityTable(typeof(T));
+            string sql  = _sqlDialect.TranslateSelectById(entityTable, pk);
+            
+            var cmd = _connection.CreateCommand();
+            cmd.CommandText = sql;
+            var reader = cmd.ExecuteReader();
+            
+            return (T) new ObjectReader<T>(reader);
+        }
+
         private IEnumerable<Table> GetTables(Assembly assembly)
         {
             var entityTypes = GetEntityTypes(assembly);

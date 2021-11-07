@@ -44,7 +44,45 @@ namespace ORM.Postgres.SqlDialect
 
             return _sb.ToString();
         }
-        
+
+        public string TranslateSelect(EntityTable table)
+        {
+            var mappedColumns = table.Columns.Where(c => c.IsMapped).ToList();
+            string columns = string.Join(',', mappedColumns.Select(c => c.Name));
+            return $"SELECT {columns} FROM {table.Name}";
+        }
+
+        public string TranslateSelectById(EntityTable table, object pk)
+        {
+            var mappedColumns = table.Columns.Where(c => c.IsMapped).ToList();
+            var pkColumn = mappedColumns.First(c => c.IsPrimaryKey);
+            string columns = string.Join(',', mappedColumns.Select(c => c.Name));
+            return $"SELECT {columns} FROM {table.Name} WHERE {pkColumn.Name} = {pk}";
+        }
+
+        public string TranslateInsert<T>(EntityTable table, T entity)
+        {
+            var mappedColumns = table.Columns.Where(c => c.IsMapped).ToList();
+            var properties = typeof(T).GetProperties();
+            
+            var propertyValues = mappedColumns.Select(c =>
+            {
+                var property = properties.FirstOrDefault(p => new Column(p).Name == c.Name);
+                object value = property?.GetValue(entity) ?? "NULL";
+                
+                if (value is string stringValue && stringValue != "NULL")
+                {
+                    value = $"'{stringValue}'";
+                }
+
+                return value;
+            });
+            
+            string columns = string.Join(',', mappedColumns.Select(c => c.Name));
+            string values = string.Join(", ", propertyValues);
+            return $"INSERT INTO {table.Name} ({columns}) VALUES ({values})";
+        }
+
         private void TranslateDropTable(Table table)
         {
             _sb

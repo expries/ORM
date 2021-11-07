@@ -1,6 +1,6 @@
 namespace ORM.Postgres.DataTypes
 {
-    public class PostgresInt : PostgresDataType
+    internal class PostgresInt : PostgresDataType
     {
         public PostgresInt() : base("INTEGER")
         {

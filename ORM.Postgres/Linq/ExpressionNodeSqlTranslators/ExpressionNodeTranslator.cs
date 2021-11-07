@@ -5,9 +5,9 @@ namespace ORM.Postgres.Linq.ExpressionNodeSqlTranslators
 {
     public abstract class ExpressionNodeTranslator<T>
     {
-        private readonly SqlQueryTranslator _translator;
+        private readonly PostgresQueryTranslator _translator;
         
-        protected ExpressionNodeTranslator(SqlQueryTranslator translator)
+        protected ExpressionNodeTranslator(PostgresQueryTranslator translator)
         {
             _translator = translator;
         }
