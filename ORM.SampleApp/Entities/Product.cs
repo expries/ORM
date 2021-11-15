@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.Diagnostics.CodeAnalysis;
 using ORM.Core.Models.Attributes;
@@ -24,5 +25,7 @@ namespace ORM.Application.Entities
         public int Likes { get; set; }
         
         public DateTime InsertedInStore { get; set; }
+        
+        public List<Seller> Sellers { get; set; }
     }
 }

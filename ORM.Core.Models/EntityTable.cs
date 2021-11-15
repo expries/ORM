@@ -2,8 +2,10 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using Microsoft.VisualStudio.TestPlatform.ObjectModel;
+using ORM.Core.Models.Enums;
 using ORM.Core.Models.Exceptions;
-using ORM.Core.Models.Helpers;
+using ORM.Core.Models.Extensions;
 
 namespace ORM.Core.Models
 {
@@ -22,8 +24,8 @@ namespace ORM.Core.Models
             Type = entityType;
             ReadType(entityType);
         }
-        
-        // Create new table baesd on the given entity type
+
+        // Create new table based on the given entity type
         // rootTables contains the tables that need to reference this table in order to be created
         private EntityTable(Type entityType, List<EntityTable> rootTables) : base(entityType.Name)
         {
@@ -74,68 +76,39 @@ namespace ORM.Core.Models
             var entityType = type.IsCollectionOfAType() ? type.GetGenericArguments().First() : type;
             var entityTable = ResolveEntityTable(entityType);
             
-            // get property on other entity for the current entity type
-            var propertyOnOtherEntity = entityType.GetPropertyOfTypeFirstOrDefault(Type);
-
-            if (propertyOnOtherEntity is null)
+            if (HasOneToOneRelationship(type, entityType))
             {
-                throw new InvalidEntityException($"Failed to navigate property {Type.Name}.{property.Name}: " +
-                                                 $"type '{entityType.Name}' has no property of type '{Type.Name}'");
+                AddOneToOne(entityTable);
             }
 
-            // relationship between entities is many-to-...
-            if (type.IsCollectionOfAType())
-            {
-                AddManyTo(propertyOnOtherEntity, entityTable);
-                return;
-            }
-
-            // relationship between entities is one-to-...
-            AddOneTo(propertyOnOtherEntity, entityTable);
-        }
-
-        // Add one-to-... relationship to other entity table
-        private void AddOneTo(PropertyInfo propertyOnOtherType, Table entityTable)
-        {
-            if (propertyOnOtherType.PropertyType.IsCollectionOfAType())
+            if (HasOneToManyRelationship(type, entityType))
             {
                 AddOneToMany(entityTable);
-                return;
             }
             
-            AddOneToOne(entityTable);
-        }
-
-        // Add many-to-... relationship to other entity table
-        private void AddManyTo(PropertyInfo propertyOnOtherType, Table entityTable)
-        {
-            // check if other entity created many-to-many table and relationships
-            if (RelationshipTo(entityTable) is TableRelationshipType.ManyToMany)
+            if (HasManyToOneRelationship(type, entityType))
             {
-                return;
+                AddManyToOne(entityTable);
             }
             
-            if (propertyOnOtherType.PropertyType.IsCollectionOfAType())
+            if (HasManyToManyRelationship(type, entityType) && !CalledByTable(entityType))
             {
                 AddManyToMany(entityTable);
-                return;
             }
-            
-            AddManyToOne(entityTable);
         }
-        
+
         // Add one-to-one relationship to other table 
         private void AddOneToOne(Table other)
         {
             string fkName = $"fk_{other.Name}";
             AddForeignKey(fkName, other, true);
-            AddRelationship(other, TableRelationshipType.OneToOne);
+            AddRelationship(other, RelationshipType.OneToOne);
         }
 
         // Add one-to-many relationship to other table
         private void AddOneToMany(Table other)
         {
-            AddRelationship(other, TableRelationshipType.OneToMany);
+            AddRelationship(other, RelationshipType.OneToMany);
         }
         
         // Add many-to-one relationship to other table
@@ -143,29 +116,111 @@ namespace ORM.Core.Models
         {
             string fkName = $"fk_{other.Name}";
             AddForeignKey(fkName, other, false);
-            AddRelationship(other, TableRelationshipType.ManyToOne);
+            AddRelationship(other, RelationshipType.ManyToOne);
         }
         
         // Add many-to-many relationship to other table
         private void AddManyToMany(Table other)
         {
             var fkTable = CreateManyToManyTable(other);
-            AddRelationship(fkTable, TableRelationshipType.OneToMany);
-            AddRelationship(other, TableRelationshipType.ManyToMany);
-            other.AddRelationship(fkTable, TableRelationshipType.OneToMany);
-            other.AddRelationship(this, TableRelationshipType.ManyToMany);
+            AddRelationship(fkTable, RelationshipType.OneToMany);
+            AddRelationship(other, RelationshipType.ManyToMany);
+            other.AddRelationship(fkTable, RelationshipType.OneToMany);
+            other.AddRelationship(this, RelationshipType.ManyToMany);
         }
 
         // Create helper table to represent many-to-many relationship to other table
         private Table CreateManyToManyTable(Table other)
         {
-            var pkThis = Columns.First(c => c.IsPrimaryKey);
-            var pkOther = other.Columns.First(c => c.IsPrimaryKey);
-            var fkTable = new ForeignKeyTable(pkThis, pkOther, this, other);
-            return fkTable;
+            bool firstType = Type.GUID.GetHashCode() > (other as EntityTable)?.Type.GUID.GetHashCode();
+            Column pkThis;
+            Column pkOther;
+            
+            if (firstType)
+            {
+                pkThis = Columns.First(c => c.IsPrimaryKey);
+                pkOther = other.Columns.First(c => c.IsPrimaryKey);
+                return new ForeignKeyTable(pkThis, pkOther, this, other);
+            }
+
+            pkThis = other.Columns.First(c => c.IsPrimaryKey);
+            pkOther = Columns.First(c => c.IsPrimaryKey);
+            return new ForeignKeyTable(pkThis, pkOther, other, this);
+        }
+        
+        private bool HasOneToOneRelationship(Type propertyType, Type entityType)
+        {
+            if (propertyType.IsCollectionOfAType())
+            {
+                return false;
+            }
+            
+            var navigatedProperty = propertyType.GetPropertyOfTypeFirstOrDefault(Type);
+
+            if (navigatedProperty is null)
+            {
+                throw new InvalidEntityException($"Entity {entityType.Name} does not have navigated property " +
+                                                 $"for type {Type.Name}, can't resolve relationship.");
+            }
+            
+            return !navigatedProperty.PropertyType.IsCollectionOfAType();
         }
 
-        // Get table for entity
+        private bool HasOneToManyRelationship(Type propertyType, Type entityType)
+        {
+            if (!propertyType.IsCollectionOfAType())
+            {
+                return false;
+            }
+            
+            var navigatedProperty = entityType.GetPropertyOfTypeFirstOrDefault(Type);
+
+            if (navigatedProperty is null)
+            {
+                throw new InvalidEntityException($"Entity {entityType.Name} does not have navigated property " +
+                                                 $"for type {Type.Name}, can't resolve relationship.");
+            }
+            
+            return !navigatedProperty.PropertyType.IsCollectionOfAType();
+        }
+        
+        private bool HasManyToOneRelationship(Type propertyType, Type entityType)
+        {
+            if (propertyType.IsCollectionOfAType())
+            {
+                return false;
+            }
+            
+            var navigatedProperty = entityType.GetPropertyOfTypeFirstOrDefault(Type);
+
+            if (navigatedProperty is null)
+            {
+                throw new InvalidEntityException($"Entity {entityType.Name} does not have navigated property " +
+                                                 $"for type {Type.Name}, can't resolve relationship.");
+            }
+            
+            return navigatedProperty.PropertyType.IsCollectionOfAType();
+        }
+
+        private bool HasManyToManyRelationship(Type propertyType, Type entityType)
+        {
+            if (!propertyType.IsCollectionOfAType())
+            {
+                return false;
+            }
+            
+            var navigatedProperty = entityType.GetPropertyOfTypeFirstOrDefault(Type);
+
+            if (navigatedProperty is null)
+            {
+                throw new InvalidEntityException($"Entity {entityType.Name} does not have navigated property " +
+                                                 $"for type {Type.Name}, can't resolve relationship.");
+            }
+            
+            return navigatedProperty.PropertyType.IsCollectionOfAType();
+        }
+
+        // Get table for entity in a manner avoiding endless recursion
         private Table ResolveEntityTable(Type entityType)
         {
             var table = _rootTables.FirstOrDefault(t => t.Type == entityType);
@@ -180,6 +235,11 @@ namespace ORM.Core.Models
             _rootTables.Remove(this);
             
             return table;
+        }
+
+        private bool CalledByTable(Type type)
+        {
+            return _rootTables.Any(t => t.Type == type);
         }
     }
 }

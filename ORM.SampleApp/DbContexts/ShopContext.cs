@@ -11,7 +11,7 @@ namespace ORM.Application.DbContexts
 
         public DbSet<Book> Books { get; set; }
         
-        public ShopContext(ISqlDialect dialect, IDbConnection connection) : base(dialect, connection)
+        public ShopContext(ISqlDialect dialect, IDbConnection connection) : base(connection, dialect)
         {
         }
     }

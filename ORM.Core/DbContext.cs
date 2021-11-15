@@ -1,24 +1,24 @@
 using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Data;
 using System.Linq;
 using System.Reflection;
 using ORM.Core.Interfaces;
 using ORM.Core.Models;
+using ORM.Core.Models.Extensions;
 
 namespace ORM.Core
 {
     public class DbContext : IDbContext
     {
-        private readonly ISqlDialect _sqlDialect;
-        
         private readonly IDbConnection _connection;
 
-        public DbContext(ISqlDialect dialect, IDbConnection connection)
+        private readonly ISqlDialect _sqlDialect;
+
+        public DbContext(IDbConnection connection, ISqlDialect dialect)
         {
-            _sqlDialect = dialect;
             _connection = connection;
+            _sqlDialect = dialect;
         }
         
         public void EnsureCreated(Assembly? assembly = null)
@@ -37,7 +37,7 @@ namespace ORM.Core
 
         public void Save<T>(T entity)
         {
-            var table = new EntityTable(typeof(T));
+            var table = typeof(T).ToTable();
             string sql = _sqlDialect.TranslateInsert(table, entity);
             
             var cmd = _connection.CreateCommand();
@@ -47,32 +47,38 @@ namespace ORM.Core
 
         public IEnumerable<T> GetAll<T>()
         {
-            var entityTable = new EntityTable(typeof(T));
+            var entityTable = typeof(T).ToTable();
             string sql  = _sqlDialect.TranslateSelect(entityTable);
             
             var cmd = _connection.CreateCommand();
             cmd.CommandText = sql;
             var reader = cmd.ExecuteReader();
             
-            return new ObjectReader<T>(reader);
+            return CreateObjectReader<T>(reader);
         }
 
         public T GetById<T>(object pk)
         {
-            var entityTable = new EntityTable(typeof(T));
+            var entityTable = typeof(T).ToTable();
             string sql  = _sqlDialect.TranslateSelectById(entityTable, pk);
             
             var cmd = _connection.CreateCommand();
             cmd.CommandText = sql;
             var reader = cmd.ExecuteReader();
             
-            return (T) new ObjectReader<T>(reader);
+            return (T) CreateObjectReader<T>(reader);
+        }
+
+        private ObjectReader<T> CreateObjectReader<T>(IDataReader dataReader)
+        {
+            var loader = new LazyLoader(_connection, _sqlDialect);
+            return new ObjectReader<T>(dataReader, loader);            
         }
 
         private IEnumerable<Table> GetTables(Assembly assembly)
         {
             var entityTypes = GetEntityTypes(assembly);
-            var entityTables = entityTypes.Select(t => new EntityTable(t));
+            var entityTables = entityTypes.Select(t => t.ToTable());
             var tables = GetAllTables(entityTables);
             return tables;
         }

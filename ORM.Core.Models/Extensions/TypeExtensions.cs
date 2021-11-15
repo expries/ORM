@@ -3,16 +3,21 @@ using System.Collections;
 using System.Linq;
 using System.Reflection;
 
-namespace ORM.Core.Models.Helpers
+namespace ORM.Core.Models.Extensions
 {
     public static class TypeExtensions
     {
+        public static EntityTable ToTable(this Type type)
+        {
+            return new EntityTable(type);
+        }
+        
         public static bool IsConvertibleToDbColumn(this Type type)
         {
             return type.IsValueType || type == typeof(string);
         }
 
-        public static PropertyInfo GetPropertyOfTypeFirstOrDefault(this Type type, Type other)
+        public static PropertyInfo? GetPropertyOfTypeFirstOrDefault(this Type type, Type other)
         {
             var propertyOnOtherType = type
                 .GetProperties()

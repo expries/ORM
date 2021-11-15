@@ -1,6 +1,7 @@
 ﻿using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using ORM.Core.Models.Enums;
 
 namespace ORM.Core.Models
 {
@@ -19,7 +20,7 @@ namespace ORM.Core.Models
             Name = name;
         }
 
-        public void AddRelationship(Table other, TableRelationshipType type)
+        public void AddRelationship(Table other, RelationshipType type)
         {
             // remove old relationships to table
             Relationships
@@ -31,10 +32,16 @@ namespace ORM.Core.Models
             Relationships.Add(relationship);
         }
         
-        protected TableRelationshipType RelationshipTo(Table other)
+        public RelationshipType RelationshipTo(Table other)
         {
-            var relationship = Relationships.FirstOrDefault(x => x.Table == other);
-            return relationship?.Type ?? TableRelationshipType.None;
+            var relationship = Relationships.FirstOrDefault(x => 
+                x.Table == other || 
+                x.Table is EntityTable t1 && 
+                other is EntityTable t2 && 
+                t1.Type == t2.Type
+            );
+            
+            return relationship?.Type ?? RelationshipType.None;
         }
 
         protected void AddColumn(PropertyInfo property)

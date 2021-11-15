@@ -16,5 +16,11 @@ namespace ORM.Core.Interfaces
         public string TranslateSelectById(EntityTable table, object pk);
 
         public string TranslateInsert<T>(EntityTable table, T entity);
+
+        public string TranslateSelectManyToOne<TMany, TOne>(object pk);
+
+        public string TranslateSelectOneToMany<TOne, TMany>(object pk);
+
+        public string TranslateSelectManyToMany<TManyA, TManyB>(object pk);
     }
 }

@@ -2,6 +2,8 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.Data;
+using System.Linq;
+using ORM.Core.Interfaces;
 
 namespace ORM.Core
 {
@@ -9,9 +11,9 @@ namespace ORM.Core
     {
         private IEnumerator<T>? _enumerator;
         
-        public ObjectReader(IDataReader reader)
+        public ObjectReader(IDataReader reader, ILazyLoader lazyLoader)
         {
-            _enumerator = new RowReader<T>(reader);
+            _enumerator = new RowReader<T>(reader, lazyLoader);
         }
         
         IEnumerator IEnumerable.GetEnumerator()
@@ -31,9 +33,11 @@ namespace ORM.Core
             return result;
         }
 
-        public static explicit operator T(ObjectReader<T> instance)
+        public static implicit operator T(ObjectReader<T> instance)
         {
-            return instance.GetEnumerator().Current;
+            using var rowReader = instance.GetEnumerator();
+            rowReader.MoveNext();
+            return rowReader.Current;
         }
     }
 }

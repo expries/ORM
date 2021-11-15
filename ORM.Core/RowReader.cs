@@ -1,49 +1,38 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.ComponentModel.DataAnnotations.Schema;
 using System.Data;
 using System.Linq;
 using System.Reflection;
+using System.Reflection.Metadata.Ecma335;
+using ORM.Core.Interfaces;
 using ORM.Core.Models;
+using ORM.Core.Models.Enums;
 using ORM.Core.Models.Exceptions;
-using ORM.Core.Models.Helpers;
+using ORM.Core.Models.Extensions;
 
 namespace ORM.Core
 {
     internal class RowReader<T> : IEnumerator<T>
     {
         private readonly IDataReader _reader;
+        
+        private readonly ILazyLoader _lazyLoader;
 
         private Dictionary<int, string>? _schema;
 
-        private bool _recordWasRead = false;
-
-        private T _current;
-
-        public T Current
-        {
-            get
-            {
-                if (!_recordWasRead)
-                {
-                    MoveNext();
-                }
-                
-                return _current;
-            }
-        }
+        public T Current { get; private set; }
 
         object? IEnumerator.Current => Current;
         
-        public RowReader(IDataReader reader)
+        public RowReader(IDataReader reader, ILazyLoader lazyLoader)
         {
             _reader = reader;
+            _lazyLoader = lazyLoader;
         }
         
         public bool MoveNext()
         {
-            _recordWasRead = true;
             bool recordWasFound = _reader.Read();
 
             if (!recordWasFound)
@@ -62,7 +51,7 @@ namespace ORM.Core
                 return true;
             }
 
-            _current = Activator.CreateInstance<T>();
+            Current = Activator.CreateInstance<T>();
             ReadComplexType();
             return true;
         }
@@ -92,89 +81,120 @@ namespace ORM.Core
         {
             if (_schema.Count < 1)
             {
-                throw new OrmException("Found result column for sql statement");
+                throw new ObjectMappingException("Statement yielded no result to map.");
             }
 
             var valueType = _reader.GetFieldType(0);
             
             if (valueType == typeof(long) && typeof(T) == typeof(int))
             {
-                _current = (T) (object) _reader.GetInt32(0);
+                Current = (T) (object) _reader.GetInt32(0);
                 return;
             }
             
             object value = _reader.GetValue(0);
-            _current = (T) value;
+            Current = (T) value;
         }
 
         private void ReadComplexType()
         {
-            var table = new EntityTable(typeof(T));
+            var table = typeof(T).ToTable();
             var properties = typeof(T).GetProperties();
-            var manyToOne = table.Relationships.Where(r => r.Type is TableRelationshipType.ManyToOne);
-            var oneToMany = table.Relationships.Where(r => r.Type is TableRelationshipType.OneToMany);
 
-            foreach (var property in properties)
+            var simpleProperties = properties.Where(p => 
+                p.PropertyType.IsConvertibleToDbColumn());
+
+            var complexProperties = properties.Where(p =>
+                !p.PropertyType.IsConvertibleToDbColumn());
+
+            foreach (var property in simpleProperties)
+            {
+                MapColumn(property);
+            }
+            
+            var pkColumn = table.Columns.First(c => c.IsPrimaryKey);
+            var pkProperty = properties.First(p => new Column(p).Name == pkColumn.Name);
+            object? pk = pkProperty.GetValue(Current);
+
+            foreach (var property in complexProperties)
             {
                 var type = property.PropertyType;
-                bool isManyToOne = manyToOne.Any(r => r.Table is EntityTable et && et.Type == type);
-                bool isOneToMany = oneToMany.Any(r => r.Table is EntityTable et && et.Type == type);
+                var entityType = type.IsCollectionOfAType() 
+                    ? type.GetGenericArguments().First() 
+                    : type;
 
-                if (type.IsConvertibleToDbColumn())
+                var entityTable = entityType.ToTable();
+
+                switch (table.RelationshipTo(entityTable))
                 {
-                    MapColumn(property);
-                }
-
-                type.IsCollectionOfAType();
-
-                var entity = new EntityTable(type);
-                
-                if (isManyToOne)
-                {
-                    //MapManyToOne(property, table);
-                    continue;
-                }
-
-                if (isOneToMany)
-                {
-                    //MapOneToMany(property, table);
-                    continue;
+                    case RelationshipType.OneToOne:
+                    case RelationshipType.OneToMany:
+                        MapOneToMany(property, entityTable, pk);
+                        break;
+                    
+                    case RelationshipType.ManyToOne:
+                        MapManyToOne(property, entityTable, pk);
+                        break;
+                    
+                    case RelationshipType.ManyToMany:
+                        MapManyToMany(property, entityTable, pk);
+                        break;
+                    
+                    case RelationshipType.None:
+                        throw new ObjectMappingException($"No relation found for property {property.Name} " +
+                                                         $"on type {typeof(T).Name}");
                 }
             }
         }
-
+        
         private void MapColumn(PropertyInfo property)
         {
-            var attribute = property.GetCustomAttribute(typeof(ColumnAttribute), true);
-            string columnName = property.Name;
-
-            if (attribute is ColumnAttribute columnAttribute)
-            {
-                columnName = columnAttribute.Name;
-            }
-
-            bool schemaMatchesProperty = _schema.Any(c => 
-                string.Equals(c.Value, columnName, StringComparison.CurrentCultureIgnoreCase));
+            var column = new Column(property);
+            bool schemaContainsColumn = _schema.Values.Any(s => s.ToLower() == column.Name.ToLower());
             
-            if (!schemaMatchesProperty)
+            if (!schemaContainsColumn)
             {
-                property.SetValue(_current, null);
+                property.SetValue(Current, null);
                 return;
             }
-
-            var columnSchema = _schema.First(c => 
-                string.Equals(c.Value, columnName, StringComparison.CurrentCultureIgnoreCase));
             
+            var columnSchema = _schema.FirstOrDefault(
+                kv => kv.Value.ToLower() == column.Name.ToLower());
+
             int columnOrdinal = columnSchema.Key;
             object value = _reader.GetValue(columnOrdinal);
 
             if (value is DBNull)
             {
-                property.SetValue(_current, null);
+                property.SetValue(Current, null);
                 return;
             }
             
-            property.SetValue(_current, value);
+            property.SetValue(Current, value);
+        }
+
+        private void MapOneToMany(PropertyInfo property, EntityTable entityTable, object pk)
+        {
+            var method = typeof(ILazyLoader).GetMethod(nameof(LazyLoader.LoadOneToMany));
+            var genericMethod = method.MakeGenericMethod(typeof(T), entityTable.Type);
+            var result = genericMethod.Invoke(_lazyLoader, new[] { pk });
+            property.SetValue(Current, result);
+        }
+        
+        private void MapManyToOne(PropertyInfo property, EntityTable entityTable, object pk)
+        {
+            var method = typeof(ILazyLoader).GetMethod(nameof(LazyLoader.LoadManyToOne));
+            var genericMethod = method.MakeGenericMethod(typeof(T), entityTable.Type);
+            var result = genericMethod.Invoke(_lazyLoader, new[] { pk });
+            property.SetValue(Current, result);
+        }
+        
+        private void MapManyToMany(PropertyInfo property, EntityTable entityTable, object pk)
+        {
+            var method = typeof(ILazyLoader).GetMethod(nameof(LazyLoader.LoadManyToMany));
+            var genericMethod = method.MakeGenericMethod(typeof(T), entityTable.Type);
+            var result = genericMethod.Invoke(_lazyLoader, new[] { pk });
+            property.SetValue(Current, result);
         }
     }
 }

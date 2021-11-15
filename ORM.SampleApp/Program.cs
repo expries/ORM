@@ -18,18 +18,22 @@ namespace ORM.Application
             
             var typeMapper = new PostgresDataTypeMapper();
             var dialect = new PostgresSqlDialect(typeMapper);
-            var orm = new DbContext(dialect, connection);
-            
-            orm.EnsureCreated();
-            
-            
+            var dbContext = new DbContext(connection, dialect);
+
+            var lazyLoader = new LazyLoader(connection, dialect);
+
+            //var sellers = dbContext.GetAll<Product>().ToList();
+            var books = dbContext.GetAll<Product>().ToList();
+
+            return;
+
             var translator = new PostgresQueryTranslator();
-            var provider = new QueryProvider(connection, translator);
+            var provider = new QueryProvider(connection, translator, lazyLoader);
             var dbSet = new DbSet<Book>(provider);
 
             var book = new Book();
             book.Title = "My Book :)";
-            orm.Save(book);
+            dbContext.Save(book);
         }
     }
 }

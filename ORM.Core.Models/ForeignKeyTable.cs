@@ -1,3 +1,5 @@
+using ORM.Core.Models.Enums;
+
 namespace ORM.Core.Models
 {
     public class ForeignKeyTable : Table
@@ -18,8 +20,8 @@ namespace ORM.Core.Models
             ForeignKeys.Add(fkB);
             
             // add table relationships
-            var relationshipA = new TableRelationship(tableA, TableRelationshipType.ManyToOne);
-            var relationshipB = new TableRelationship(tableB, TableRelationshipType.ManyToOne);
+            var relationshipA = new TableRelationship(tableA, RelationshipType.ManyToOne);
+            var relationshipB = new TableRelationship(tableB, RelationshipType.ManyToOne);
             Relationships.Add(relationshipA);
             Relationships.Add(relationshipB);
         }

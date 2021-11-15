@@ -25,6 +25,6 @@ namespace ORM.Application.Entities
         [Column("Likings")]
         public int Likes { get; set; }
         
-        public List<Author> Authors { get; set; }
+        public Author Author { get; set; }
     }
 }

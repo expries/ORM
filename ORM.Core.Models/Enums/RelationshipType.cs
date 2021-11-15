@@ -1,6 +1,6 @@
-namespace ORM.Core.Models
+namespace ORM.Core.Models.Enums
 {
-    public enum TableRelationshipType
+    public enum RelationshipType
     {
         None,
         OneToOne,

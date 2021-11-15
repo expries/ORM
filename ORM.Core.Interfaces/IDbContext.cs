@@ -1,6 +1,5 @@
 using System.Collections.Generic;
 using System.Reflection;
-using ORM.Core.Models;
 
 namespace ORM.Core.Interfaces
 {
