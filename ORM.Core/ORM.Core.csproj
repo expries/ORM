@@ -11,7 +11,13 @@
     </ItemGroup>
 
     <ItemGroup>
-      <PackageReference Include="Npgsql" Version="6.0.0-rc.2" />
+      <PackageReference Include="Npgsql" Version="6.0.0" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <Reference Include="Npgsql, PublicKeyToken=null">
+        <HintPath>C:\Users\Samuel\.nuget\packages\npgsql\6.0.0-rc.2\lib\net5.0\Npgsql.dll</HintPath>
+      </Reference>
     </ItemGroup>
 
 </Project>

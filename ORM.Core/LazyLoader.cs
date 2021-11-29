@@ -23,7 +23,7 @@ namespace ORM.Core
         public TOne LoadManyToOne<TMany, TOne>(object pk)
         {
             string sql = _sqlDialect.TranslateSelectManyToOne<TMany, TOne>(pk);
-            var cmd = GetCommand(sql);
+            var cmd = BuildCommand(sql);
             var reader = cmd.ExecuteReader();
             return new ObjectReader<TOne>(reader, this);
         }
@@ -36,7 +36,7 @@ namespace ORM.Core
             }
             
             string sql = _sqlDialect.TranslateSelectOneToMany<TOne, TMany>(pk);
-            var cmd = GetCommand(sql);
+            var cmd = BuildCommand(sql);
             var reader = cmd.ExecuteReader();
             loaded = true;
             return new ObjectReader<TMany>(reader, this).ToList();
@@ -50,13 +50,13 @@ namespace ORM.Core
             }
             
             string sql = _sqlDialect.TranslateSelectManyToMany<TManyA, TManyB>(pk);
-            var cmd = GetCommand(sql);
+            var cmd = BuildCommand(sql);
             var reader = cmd.ExecuteReader();
             loaded = true;
             return new ObjectReader<TManyB>(reader, this).ToList();
         }
 
-        private static IDbCommand GetCommand(string sql)
+        private static IDbCommand BuildCommand(string sql)
         {
             var connection = new NpgsqlConnection("Server=localhost;Port=5432;User Id=postgres;Password=postgres;");
             connection.Open();

@@ -4,7 +4,6 @@ using System.Collections.Generic;
 using System.Data;
 using System.Linq;
 using System.Reflection;
-using System.Reflection.Metadata.Ecma335;
 using ORM.Core.Interfaces;
 using ORM.Core.Models;
 using ORM.Core.Models.Enums;
@@ -45,14 +44,16 @@ namespace ORM.Core
                 ReadColumnSchema();
             }
 
-            if (typeof(T).IsConvertibleToDbColumn())
+            if (typeof(T).IsInternalType())
             {
-                ReadValueType();
-                return true;
+                ReadInternalType();
+            }
+            else
+            {
+                Current = Activator.CreateInstance<T>();
+                ReadExternalType();  
             }
 
-            Current = Activator.CreateInstance<T>();
-            ReadComplexType();
             return true;
         }
 
@@ -77,7 +78,7 @@ namespace ORM.Core
             }
         }
 
-        private void ReadValueType()
+        private void ReadInternalType()
         {
             if (_schema.Count < 1)
             {
@@ -96,59 +97,35 @@ namespace ORM.Core
             Current = (T) value;
         }
 
-        private void ReadComplexType()
+        private void ReadExternalType()
         {
-            var table = typeof(T).ToTable();
             var properties = typeof(T).GetProperties();
 
-            var simpleProperties = properties.Where(p => 
-                p.PropertyType.IsConvertibleToDbColumn());
+            var internalProperties = properties.Where(p => 
+                p.PropertyType.IsInternalType());
 
-            var complexProperties = properties.Where(p =>
-                !p.PropertyType.IsConvertibleToDbColumn());
+            var externalProperties = properties.Where(p =>
+                !p.PropertyType.IsInternalType());
 
-            foreach (var property in simpleProperties)
+            foreach (var property in internalProperties)
             {
-                MapColumn(property);
+                SetInternalProperty(property);
             }
-            
-            var pkColumn = table.Columns.First(c => c.IsPrimaryKey);
-            var pkProperty = properties.First(p => new Column(p).Name == pkColumn.Name);
-            object? pk = pkProperty.GetValue(Current);
 
-            foreach (var property in complexProperties)
+            foreach (var property in externalProperties)
             {
                 var type = property.PropertyType;
-                var entityType = type.IsCollectionOfAType() 
+                var entityType = type.IsCollectionOfOneType() 
                     ? type.GetGenericArguments().First() 
                     : type;
-
-                var entityTable = entityType.ToTable();
-
-                switch (table.RelationshipTo(entityTable))
-                {
-                    case RelationshipType.OneToOne:
-                    case RelationshipType.OneToMany:
-                        MapOneToMany(property, entityTable, pk);
-                        break;
-                    
-                    case RelationshipType.ManyToOne:
-                        MapManyToOne(property, entityTable, pk);
-                        break;
-                    
-                    case RelationshipType.ManyToMany:
-                        MapManyToMany(property, entityTable, pk);
-                        break;
-                    
-                    case RelationshipType.None:
-                        throw new ObjectMappingException($"No relation found for property {property.Name} " +
-                                                         $"on type {typeof(T).Name}");
-                }
+                
+                SetExternalProperty(property, entityType);
             }
         }
         
-        private void MapColumn(PropertyInfo property)
+        private void SetInternalProperty(PropertyInfo property)
         {
+            // check if column is in result schema
             var column = new Column(property);
             bool schemaContainsColumn = _schema.Values.Any(s => s.ToLower() == column.Name.ToLower());
             
@@ -161,9 +138,11 @@ namespace ORM.Core
             var columnSchema = _schema.FirstOrDefault(
                 kv => kv.Value.ToLower() == column.Name.ToLower());
 
+            // read value from results
             int columnOrdinal = columnSchema.Key;
             object value = _reader.GetValue(columnOrdinal);
 
+            // set property to value
             if (value is DBNull)
             {
                 property.SetValue(Current, null);
@@ -173,28 +152,35 @@ namespace ORM.Core
             property.SetValue(Current, value);
         }
 
-        private void MapOneToMany(PropertyInfo property, EntityTable entityTable, object pk)
+        private void SetExternalProperty(PropertyInfo property, Type externalType)
         {
-            var method = typeof(ILazyLoader).GetMethod(nameof(LazyLoader.LoadOneToMany));
-            var genericMethod = method.MakeGenericMethod(typeof(T), entityTable.Type);
-            var result = genericMethod.Invoke(_lazyLoader, new[] { pk });
+            object? pk = GetPrimaryKey();
+            var table = typeof(T).ToTable();
+            var relationship = table.RelationshipTo(externalType);
+
+            // select lazy loader method to use
+            var method = relationship switch
+            {
+                RelationshipType.OneToOne => typeof(ILazyLoader).GetMethod(nameof(LazyLoader.LoadOneToMany)),
+                RelationshipType.OneToMany => typeof(ILazyLoader).GetMethod(nameof(LazyLoader.LoadOneToMany)),
+                RelationshipType.ManyToOne => typeof(ILazyLoader).GetMethod(nameof(LazyLoader.LoadManyToOne)),
+                RelationshipType.ManyToMany => typeof(ILazyLoader).GetMethod(nameof(LazyLoader.LoadManyToMany)),
+                _ => throw new ObjectMappingException($"No relation found for property {property.Name} on type {typeof(T).Name}")
+            };
+            
+            // execute loader method
+            var genericMethod = method?.MakeGenericMethod(typeof(T), externalType);
+            object? result = genericMethod?.Invoke(_lazyLoader, new[] { pk });
             property.SetValue(Current, result);
         }
-        
-        private void MapManyToOne(PropertyInfo property, EntityTable entityTable, object pk)
+
+        private object? GetPrimaryKey()
         {
-            var method = typeof(ILazyLoader).GetMethod(nameof(LazyLoader.LoadManyToOne));
-            var genericMethod = method.MakeGenericMethod(typeof(T), entityTable.Type);
-            var result = genericMethod.Invoke(_lazyLoader, new[] { pk });
-            property.SetValue(Current, result);
-        }
-        
-        private void MapManyToMany(PropertyInfo property, EntityTable entityTable, object pk)
-        {
-            var method = typeof(ILazyLoader).GetMethod(nameof(LazyLoader.LoadManyToMany));
-            var genericMethod = method.MakeGenericMethod(typeof(T), entityTable.Type);
-            var result = genericMethod.Invoke(_lazyLoader, new[] { pk });
-            property.SetValue(Current, result);
+            var table = typeof(T).ToTable();
+            var properties = typeof(T).GetProperties();
+            var pkColumn = table.Columns.First(c => c.IsPrimaryKey);
+            var pkProperty = properties.First(p => new Column(p).Name == pkColumn.Name);
+            return pkProperty.GetValue(Current);
         }
     }
 }

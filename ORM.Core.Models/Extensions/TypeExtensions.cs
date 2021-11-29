@@ -12,24 +12,24 @@ namespace ORM.Core.Models.Extensions
             return new EntityTable(type);
         }
         
-        public static bool IsConvertibleToDbColumn(this Type type)
+        public static bool IsInternalType(this Type type)
         {
             return type.IsValueType || type == typeof(string);
         }
 
-        public static PropertyInfo? GetPropertyOfTypeFirstOrDefault(this Type type, Type other)
+        public static PropertyInfo? GetNavigatedProperty(this Type type, Type other)
         {
             var propertyOnOtherType = type
                 .GetProperties()
                 .FirstOrDefault(p => 
                     p.PropertyType == other || 
-                    p.PropertyType.IsCollectionOfAType() && 
+                    p.PropertyType.IsCollectionOfOneType() && 
                     p.PropertyType.GetGenericArguments().First() == other);
 
             return propertyOnOtherType;
         }
 
-        public static bool IsCollectionOfAType(this Type type)
+        public static bool IsCollectionOfOneType(this Type type)
         {
             if (!type.IsCollection())
             {

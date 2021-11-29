@@ -20,7 +20,7 @@ namespace ORM.Core
             _connection = connection;
             _sqlDialect = dialect;
         }
-        
+
         public void EnsureCreated(Assembly? assembly = null)
         {
             assembly ??= Assembly.GetCallingAssembly();
@@ -90,17 +90,19 @@ namespace ORM.Core
             
             foreach (var table in tableList)
             {
-                var relatedTables = table.Relationships.Select(r => r.Table);
-                allTables = allTables.Union(relatedTables).ToList();
+                var externalTables = table.ExternalFields.Select(_ => _.Table);
+                var fkTables = table.ForeignKeyTables;
+                allTables = allTables.Union(externalTables).ToList();
+                allTables = allTables.Union(fkTables).ToList();
             }
 
             return allTables;
         }
         
-        private IEnumerable<Type> GetEntityTypes(Assembly assembly)
+        private List<Type?> GetEntityTypes(Assembly assembly)
         {
             var dbContexts = GetDbContextTypes(assembly);
-            var entities = new List<Type>();
+            var entities = new List<Type?>();
             
             foreach (var context in dbContexts)
             {

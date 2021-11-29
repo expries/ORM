@@ -49,7 +49,7 @@ namespace ORM.Postgres.SqlDialect
 
         public string TranslateSelect(EntityTable table)
         {
-            string columns = GetColumnsString(table);
+            string columns = GetEscapedColumnsString(table);
             return $"SELECT {columns} FROM \"{table.Name}\"";
         }
 
@@ -57,13 +57,13 @@ namespace ORM.Postgres.SqlDialect
         {
             var mappedColumns = table.Columns.Where(c => c.IsMapped);
             var pkColumn = mappedColumns.First(c => c.IsPrimaryKey);
-            string columns = GetColumnsString(table);
+            string columns = GetEscapedColumnsString(table);
             return $"SELECT {columns} FROM \"{table.Name}\" WHERE \"{pkColumn.Name}\" = {pk}";
         }
 
         public string TranslateInsert<T>(EntityTable table, T entity)
         {
-            string columns = GetColumnsString(table);
+            string columns = GetUnescapedColumnsString(table);
             string values = GetValuesString(table, entity);
             return $"INSERT INTO \"{table.Name}\" ({columns}) VALUES ({values})";
         }
@@ -94,7 +94,7 @@ namespace ORM.Postgres.SqlDialect
             var oneTable = typeof(TOne).ToTable();
             var manyTable = typeof(TMany).ToTable();
             
-            string columns = GetColumnsString(manyTable);
+            string columns = GetEscapedColumnsString(manyTable);
             var pkColumn = oneTable.Columns.First(c => c.IsPrimaryKey);
             var fk  = manyTable.ForeignKeys.First(c => c.TableTo.Name == oneTable.Name);
             var fkColumn = fk.ColumnFrom;
@@ -109,22 +109,17 @@ namespace ORM.Postgres.SqlDialect
             var manyATable = typeof(TManyA).ToTable();
             var manyBTable = typeof(TManyB).ToTable();
 
-            var fkTableRelationship = manyATable.Relationships.First(r =>
-                r.Type is RelationshipType.OneToMany &&
-                r.Table.Relationships.Any(tr => 
-                    tr.Type is RelationshipType.ManyToOne && 
-                    tr.Table is EntityTable t && t.Type == typeof(TManyB))
-            );
+            var fkTable = manyATable.ForeignKeyTables.First(_ => 
+                _.TableA.Type == typeof(TManyA) && _.TableB.Type == typeof(TManyB) || 
+                _.TableA.Type == typeof(TManyB) && _.TableB.Type == typeof(TManyA));
 
-            var fkTable = fkTableRelationship.Table as ForeignKeyTable;
-            
             var fkTableA = fkTable.ForeignKeys.First(fc => 
                 fc.TableTo is EntityTable t && t.Type == typeof(TManyA));
             
             var fkTableB = fkTable.ForeignKeys.First(fc => 
                 fc.TableTo is EntityTable t && t.Type == typeof(TManyB));
             
-            string columns = GetColumnsString(manyBTable);
+            string columns = GetEscapedColumnsString(manyBTable);
             var pkColumnA = manyATable.Columns.First(c => c.IsPrimaryKey);
             var pkColumnB = manyBTable.Columns.First(c => c.IsPrimaryKey);
 
@@ -207,7 +202,7 @@ namespace ORM.Postgres.SqlDialect
             }
         }
         
-        private void TranslateAddForeignKey(ForeignKeyConstraint foreignKeyConstraint, Table table)
+        private void TranslateAddForeignKey(ForeignKey foreignKey, Table table)
         {
             _sb
                 .Append("ALTER TABLE")
@@ -216,18 +211,18 @@ namespace ORM.Postgres.SqlDialect
                 .Append(' ')
                 .Append("ADD CONSTRAINT")
                 .Append(' ')
-                .Append($"\"fk_{table.Name}_{foreignKeyConstraint.ColumnFrom.Name}_{foreignKeyConstraint.ColumnTo.Name}\"")
+                .Append($"\"fk_{table.Name}_{foreignKey.ColumnFrom.Name}_{foreignKey.ColumnTo.Name}\"")
                 .Append(' ')
                 .Append("FOREIGN KEY")
                 .Append('(')
-                .Append($"\"{foreignKeyConstraint.ColumnFrom.Name}\"")
+                .Append($"\"{foreignKey.ColumnFrom.Name}\"")
                 .Append(')')
                 .Append(' ')
                 .Append("REFERENCES")
                 .Append(' ')
-                .Append($"\"{foreignKeyConstraint.TableTo.Name}\"")
+                .Append($"\"{foreignKey.TableTo.Name}\"")
                 .Append('(')
-                .Append($"\"{foreignKeyConstraint.ColumnTo.Name}\"")
+                .Append($"\"{foreignKey.ColumnTo.Name}\"")
                 .Append(')')
                 .Append(' ')
                 .Append("ON DELETE CASCADE")
@@ -235,7 +230,16 @@ namespace ORM.Postgres.SqlDialect
                 .Append(Environment.NewLine);
         }
         
-        private string GetColumnsString(EntityTable table)
+        private string GetUnescapedColumnsString(EntityTable table)
+        {
+            var columns = table.Columns
+                .Where(c => c.IsMapped)
+                .Select(c => $"\"{c.Name}\"");
+
+            return string.Join(',', columns);
+        }
+        
+        private string GetEscapedColumnsString(EntityTable table)
         {
             var columns = table.Columns
                 .Where(c => c.IsMapped)
@@ -250,17 +254,31 @@ namespace ORM.Postgres.SqlDialect
             var values = table.Columns.Where(c => c.IsMapped).Select(c =>
             {
                 var property = properties.FirstOrDefault(p => new Column(p).Name == c.Name);
-                object value = property?.GetValue(entity) ?? "NULL";
-                
-                if (value is string stringValue && stringValue != "NULL")
-                {
-                    value = $"'{stringValue}'";
-                }
-
-                return value;
+                object value = property?.GetValue(entity) ?? DBNull.Value;
+                return GetValue(value);
             });
 
             return string.Join(',', values);
+        }
+
+        private object GetValue(object value)
+        {
+            if (value is DBNull)
+            {
+                value = "NULL";
+            }
+            
+            if (value is string stringValue && stringValue != "NULL")
+            {
+                value = $"'{stringValue}'";
+            }
+
+            if (value is DateTime dateTime)
+            {
+                value = $"TIMESTAMP '{dateTime.Year}-{dateTime.Month}-{dateTime.Day} {dateTime.Hour}:{dateTime.Minute}:{dateTime.Second}'";
+            }
+
+            return value;
         }
     }
 }

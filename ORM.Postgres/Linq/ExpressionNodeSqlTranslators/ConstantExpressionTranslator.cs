@@ -2,6 +2,7 @@
 using System.Linq;
 using System.Linq.Expressions;
 using ORM.Core.Models;
+using ORM.Core.Models.Extensions;
 
 namespace ORM.Postgres.Linq.ExpressionNodeSqlTranslators
 {
@@ -15,10 +16,9 @@ namespace ORM.Postgres.Linq.ExpressionNodeSqlTranslators
         {
             if (node.Value is IQueryable queryable)
             {
-                var table = new EntityTable(queryable.ElementType);
-                var columnNames = table.Columns.Select(c => c.Name);
-                string columnsSelection = string.Join(", ", columnNames);
-                Append($"SELECT {columnsSelection} FROM {table.Name}");
+                var table = queryable.ElementType.ToTable();
+                string columnsSelection = GetUnescapedColumnsString(table);
+                Append($"SELECT {columnsSelection} FROM \"{table.Name}\"");
                 return;
             }
 
@@ -41,6 +41,24 @@ namespace ORM.Postgres.Linq.ExpressionNodeSqlTranslators
                     Append(node.Value);
                     break;
             }
+        }
+        
+        private string GetUnescapedColumnsString(EntityTable table)
+        {
+            var columns = table.Columns
+                .Where(c => c.IsMapped)
+                .Select(c => $"\"{c.Name}\"");
+
+            return string.Join(',', columns);
+        }
+        
+        private string GetEscapedColumnsString(EntityTable table)
+        {
+            var columns = table.Columns
+                .Where(c => c.IsMapped)
+                .Select(c => $"\"{table.Name}\".\"{c.Name}\"");
+
+            return string.Join(',', columns);
         }
     }
 }

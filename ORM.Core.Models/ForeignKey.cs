@@ -1,6 +1,6 @@
 namespace ORM.Core.Models
 {
-    public class ForeignKeyConstraint
+    public class ForeignKey
     {
         public Column ColumnFrom { get; }
         
@@ -8,7 +8,7 @@ namespace ORM.Core.Models
 
         public Table TableTo { get; }
 
-        public ForeignKeyConstraint(Column columnFrom, Column columnTo, Table tableTo)
+        public ForeignKey(Column columnFrom, Column columnTo, Table tableTo)
         {
             ColumnFrom = columnFrom;
             ColumnTo = columnTo;
