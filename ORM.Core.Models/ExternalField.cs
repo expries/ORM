@@ -8,7 +8,7 @@ namespace ORM.Core.Models
         public RelationshipType Relationship { get; set; }
         
         public EntityTable Table { get; set; }
-
+        
         public ExternalField(EntityTable table, RelationshipType relationship)
         {
             Table = table;

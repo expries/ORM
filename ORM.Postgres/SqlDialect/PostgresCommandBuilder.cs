@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Data;
 using System.Linq;
 using System.Text;
 using ORM.Core.Interfaces;
@@ -10,14 +11,17 @@ using ORM.Postgres.Interfaces;
 
 namespace ORM.Postgres.SqlDialect
 {
-    public class PostgresSqlDialect : ISqlDialect
+    public class PostgresCommandBuilder : ICommandBuilder
     {
-        private readonly IDbTypeMapper _typeMapper;
+        private readonly IDbConnection _connection;
 
+        private readonly IDbTypeMapper _typeMapper;
+        
         private StringBuilder _sb = new StringBuilder();
         
-        public PostgresSqlDialect(IDbTypeMapper typeMapper)
+        public PostgresCommandBuilder(IDbConnection connection, IDbTypeMapper typeMapper)
         {
+            _connection = connection;
             _typeMapper = typeMapper;
         }
 
@@ -47,18 +51,46 @@ namespace ORM.Postgres.SqlDialect
             return _sb.ToString();
         }
 
-        public string TranslateSelect(EntityTable table)
+        public IDbCommand BuildSelect(EntityTable table)
         {
-            string columns = GetEscapedColumnsString(table);
-            return $"SELECT {columns} FROM \"{table.Name}\"";
+            string selectSql = TranslateSelect(table);
+            return GetCommand(selectSql);
+        }
+        
+        public IDbCommand BuildSelectById(EntityTable table, object pk)
+        {
+            string selectByIdSql = TranslateSelectById(table, pk);
+            return GetCommand(selectByIdSql);
+        }
+        
+        private IDbCommand GetCommand(string sql)
+        {
+            var cmd = _connection.CreateCommand();
+            cmd.CommandText = sql;
+            return cmd;
+        }
+        
+        private string TranslateSelect(EntityTable table)
+        {
+            var tableList = new List<EntityTable> {table};
+            table.BaseTables.ForEach(x => tableList.Add(x));
+            
+            string columns = GetEscapedColumnsString(tableList);
+            string sql = $"SELECT {columns} FROM \"{table.Name}\"";
+            
+            foreach (var parentTable in table.BaseTables)
+            {
+                var fk = table.ForeignKeys.First(k => k.IsInheritanceKey && k.TableTo == parentTable);
+                sql += $" JOIN \"{fk.TableTo.Name}\" ON \"{table.Name}\".\"{fk.ColumnFrom.Name}\" = \"{fk.TableTo.Name}\".\"{fk.ColumnTo.Name}\"";
+            }
+            
+            return sql;
         }
 
-        public string TranslateSelectById(EntityTable table, object pk)
+        private string TranslateSelectById(EntityTable table, object pk)
         {
-            var mappedColumns = table.Columns.Where(c => c.IsMapped);
-            var pkColumn = mappedColumns.First(c => c.IsPrimaryKey);
-            string columns = GetEscapedColumnsString(table);
-            return $"SELECT {columns} FROM \"{table.Name}\" WHERE \"{pkColumn.Name}\" = {pk}";
+            string selectSql = TranslateSelect(table);
+            return selectSql + $" WHERE \"{table.PrimaryKey.Name}\" = {pk}";
         }
 
         public string TranslateInsert<T>(EntityTable table, T entity)
@@ -230,7 +262,16 @@ namespace ORM.Postgres.SqlDialect
                 .Append(Environment.NewLine);
         }
         
-        private string GetUnescapedColumnsString(EntityTable table)
+        private static string GetEscapedColumnsString(EntityTable table)
+        {
+            var columns = table.Columns
+                .Where(c => c.IsMapped)
+                .Select(c => $"\"{table.Name}\".\"{c.Name}\"");
+
+            return string.Join(',', columns);
+        }
+        
+        private static string GetUnescapedColumnsString(EntityTable table)
         {
             var columns = table.Columns
                 .Where(c => c.IsMapped)
@@ -239,11 +280,34 @@ namespace ORM.Postgres.SqlDialect
             return string.Join(',', columns);
         }
         
-        private string GetEscapedColumnsString(EntityTable table)
+        private static string GetUnescapedColumnsString(List<EntityTable> tables)
         {
-            var columns = table.Columns
-                .Where(c => c.IsMapped)
-                .Select(c => $"\"{table.Name}\".\"{c.Name}\"");
+            var columns = new List<string>();
+            
+            foreach (var table in tables)
+            {
+                table.Columns
+                    .Where(c => c.IsMapped)
+                    .Select(c => $"\"{c.Name}\"")
+                    .ToList()
+                    .ForEach(s => columns.Add(s));
+            }
+
+            return string.Join(',', columns);
+        }
+        
+        private static string GetEscapedColumnsString(List<EntityTable> tables)
+        {
+            var columns = new List<string>();
+            
+            foreach (var table in tables)
+            {
+                table.Columns
+                    .Where(c => c.IsMapped)
+                    .Select(c => $"\"{table.Name}\".\"{c.Name}\"")
+                    .ToList()
+                    .ForEach(s => columns.Add(s));
+            }
 
             return string.Join(',', columns);
         }

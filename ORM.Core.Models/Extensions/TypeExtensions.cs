@@ -1,5 +1,6 @@
 using System;
 using System.Collections;
+using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 
@@ -17,16 +18,26 @@ namespace ORM.Core.Models.Extensions
             return type.IsValueType || type == typeof(string);
         }
 
+        public static bool IsExternalType(this Type type)
+        {
+            return !type.IsInternalType();
+        }
+
         public static PropertyInfo? GetNavigatedProperty(this Type type, Type other)
         {
-            var propertyOnOtherType = type
+            var navigatedProperty = type
                 .GetProperties()
                 .FirstOrDefault(p => 
                     p.PropertyType == other || 
                     p.PropertyType.IsCollectionOfOneType() && 
                     p.PropertyType.GetGenericArguments().First() == other);
 
-            return propertyOnOtherType;
+            return navigatedProperty;
+        }
+
+        public static IEnumerable<PropertyInfo> GetNotInheritedProperties(this Type type)
+        {
+            return type.GetProperties(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly);
         }
 
         public static bool IsCollectionOfOneType(this Type type)

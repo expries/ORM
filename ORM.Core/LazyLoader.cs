@@ -10,19 +10,19 @@ namespace ORM.Core
     {
         private readonly IDbConnection _dbConnection;
 
-        private readonly ISqlDialect _sqlDialect;
+        private readonly ICommandBuilder _commandBuilder;
 
         private bool loaded;
         
-        public LazyLoader(IDbConnection dbConnection, ISqlDialect sqlDialect)
+        public LazyLoader(IDbConnection dbConnection, ICommandBuilder commandBuilder)
         {
-            _sqlDialect = sqlDialect;
+            _commandBuilder = commandBuilder;
             _dbConnection = dbConnection;
         }
 
         public TOne LoadManyToOne<TMany, TOne>(object pk)
         {
-            string sql = _sqlDialect.TranslateSelectManyToOne<TMany, TOne>(pk);
+            string sql = _commandBuilder.TranslateSelectManyToOne<TMany, TOne>(pk);
             var cmd = BuildCommand(sql);
             var reader = cmd.ExecuteReader();
             return new ObjectReader<TOne>(reader, this);
@@ -35,7 +35,7 @@ namespace ORM.Core
                 return new List<TMany>();
             }
             
-            string sql = _sqlDialect.TranslateSelectOneToMany<TOne, TMany>(pk);
+            string sql = _commandBuilder.TranslateSelectOneToMany<TOne, TMany>(pk);
             var cmd = BuildCommand(sql);
             var reader = cmd.ExecuteReader();
             loaded = true;
@@ -49,7 +49,7 @@ namespace ORM.Core
                 return new List<TManyB>();
             }
             
-            string sql = _sqlDialect.TranslateSelectManyToMany<TManyA, TManyB>(pk);
+            string sql = _commandBuilder.TranslateSelectManyToMany<TManyA, TManyB>(pk);
             var cmd = BuildCommand(sql);
             var reader = cmd.ExecuteReader();
             loaded = true;

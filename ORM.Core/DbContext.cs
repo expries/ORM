@@ -13,12 +13,12 @@ namespace ORM.Core
     {
         private readonly IDbConnection _connection;
 
-        private readonly ISqlDialect _sqlDialect;
+        private readonly ICommandBuilder _commandBuilder;
 
-        public DbContext(IDbConnection connection, ISqlDialect dialect)
+        public DbContext(IDbConnection connection, ICommandBuilder dialect)
         {
             _connection = connection;
-            _sqlDialect = dialect;
+            _commandBuilder = dialect;
         }
 
         public void EnsureCreated(Assembly? assembly = null)
@@ -26,9 +26,9 @@ namespace ORM.Core
             assembly ??= Assembly.GetCallingAssembly();
             
             var tables = GetTables(assembly).ToList();
-            string dropTablesSql = _sqlDialect.TranslateDropTables(tables);
-            string createTablesSql = _sqlDialect.TranslateCreateTables(tables);
-            string addForeignKeysSql = _sqlDialect.TranslateAddForeignKeys(tables);
+            string dropTablesSql = _commandBuilder.TranslateDropTables(tables);
+            string createTablesSql = _commandBuilder.TranslateCreateTables(tables);
+            string addForeignKeysSql = _commandBuilder.TranslateAddForeignKeys(tables);
 
             var cmd = _connection.CreateCommand();
             cmd.CommandText = dropTablesSql + createTablesSql + addForeignKeysSql;
@@ -38,7 +38,7 @@ namespace ORM.Core
         public void Save<T>(T entity)
         {
             var table = typeof(T).ToTable();
-            string sql = _sqlDialect.TranslateInsert(table, entity);
+            string sql = _commandBuilder.TranslateInsert(table, entity);
             
             var cmd = _connection.CreateCommand();
             cmd.CommandText = sql;
@@ -48,22 +48,15 @@ namespace ORM.Core
         public IEnumerable<T> GetAll<T>()
         {
             var entityTable = typeof(T).ToTable();
-            string sql  = _sqlDialect.TranslateSelect(entityTable);
-            
-            var cmd = _connection.CreateCommand();
-            cmd.CommandText = sql;
+            var cmd = _commandBuilder.BuildSelect(entityTable);
             var reader = cmd.ExecuteReader();
-            
             return CreateObjectReader<T>(reader);
         }
 
         public T GetById<T>(object pk)
         {
             var entityTable = typeof(T).ToTable();
-            string sql  = _sqlDialect.TranslateSelectById(entityTable, pk);
-            
-            var cmd = _connection.CreateCommand();
-            cmd.CommandText = sql;
+            var cmd = _commandBuilder.BuildSelectById(entityTable, pk);
             var reader = cmd.ExecuteReader();
             
             return (T) CreateObjectReader<T>(reader);
@@ -71,7 +64,7 @@ namespace ORM.Core
 
         private ObjectReader<T> CreateObjectReader<T>(IDataReader dataReader)
         {
-            var loader = new LazyLoader(_connection, _sqlDialect);
+            var loader = new LazyLoader(_connection, _commandBuilder);
             return new ObjectReader<T>(dataReader, loader);            
         }
 
@@ -91,9 +84,17 @@ namespace ORM.Core
             foreach (var table in tableList)
             {
                 var externalTables = table.ExternalFields.Select(_ => _.Table);
-                var fkTables = table.ForeignKeyTables;
+                var manyToManyTables = table.ForeignKeyTables;
+                var parentTables = table.ForeignKeys.Where(k => k.IsInheritanceKey).Select(r => r.TableTo);
+                allTables = allTables.Union(parentTables).ToList();
                 allTables = allTables.Union(externalTables).ToList();
-                allTables = allTables.Union(fkTables).ToList();
+                allTables = allTables.Union(manyToManyTables).ToList();
+            }
+
+            foreach (var table in allTables.ToList())
+            {
+                var parentTables = table.ForeignKeys.Where(k => k.IsInheritanceKey).Select(r => r.TableTo);
+                allTables = allTables.Union(parentTables).ToList();
             }
 
             return allTables;

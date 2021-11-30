@@ -11,8 +11,10 @@ namespace ORM.Core.Models
     public class EntityTable : Table
     {
         public Type Type { get; }
+        
+        public List<EntityTable> BaseTables { get; } = new List<EntityTable>();
 
-        private readonly List<EntityTable> _rootTables = new List<EntityTable>();
+        private static readonly List<EntityTable> EntityList = new List<EntityTable>();
 
         /// <summary>
         /// Create new table based on the given entity type
@@ -20,15 +22,6 @@ namespace ORM.Core.Models
         /// <param name="entityType"></param>
         public EntityTable(Type entityType) : base(entityType.Name)
         {
-            Type = entityType;
-            ReadType(entityType);
-        }
-
-        // Create new table based on the given entity type
-        // rootTables contains the tables that need to reference this table in order to be created
-        private EntityTable(Type entityType, List<EntityTable> rootTables) : base(entityType.Name)
-        {
-            _rootTables = rootTables;
             Type = entityType;
             ReadType(entityType);
         }
@@ -42,33 +35,39 @@ namespace ORM.Core.Models
                                                  $"a table. Please provide a complex type.");
             }
 
-            var properties = entityType.GetProperties();
+            var properties = entityType.GetNotInheritedProperties().ToList();
             var columnProperties = properties.Where(p => p.PropertyType.IsInternalType());
-            var externalFieldProperties = properties.Where(p => !p.PropertyType.IsInternalType());
 
-            // first process properties which types can be converted into table columns
+            // process properties which types can be converted into table columns
             foreach (var property in columnProperties)
             {
                 AddColumn(property);
             }
+
+            // process base tables
+            var baseTypeTables = GetBaseTables();
+            
+            foreach (var table in baseTypeTables)
+            {
+                AddForeignKey(table, nullable: false, targetTypeIsParentType: true);
+                BaseTables.Add(table);
+            }
             
             // check if entity has a mandatory primary key column
-            var primaryKey = Columns.FirstOrDefault(c => c.IsPrimaryKey);
-
-            if (primaryKey is null)
-            {
-                throw new InvalidEntityException($"Type {Type.Name} is missing a primary key column.");
-            }
+            var pk = Columns.FirstOrDefault(c => c.IsPrimaryKey);
+            PrimaryKey = pk ?? throw new InvalidEntityException($"Type {Type.Name} is missing a primary key column.");
 
             // process properties which are of an entity type
+            var externalFieldProperties = properties.Where(p => p.PropertyType.IsExternalType());
+
             foreach (var property in externalFieldProperties)
             {
-                ReadExternalProperty(property);
+                ReadExternalField(property);
             }
         }
 
         // process a property that is an entity itself
-        private void ReadExternalProperty(PropertyInfo property)
+        private void ReadExternalField(PropertyInfo property)
         {
             // generate the entity's table
             var type = property.PropertyType;
@@ -99,8 +98,7 @@ namespace ORM.Core.Models
         // Add one-to-one relationship to other table 
         private void AddOneToOne(EntityTable other)
         {
-            string fkName = $"fk_{other.Name}";
-            AddForeignKey(fkName, other, true);
+            AddForeignKey(other, true);
             AddExternalField(other, RelationshipType.OneToOne);
         }
 
@@ -113,8 +111,7 @@ namespace ORM.Core.Models
         // Add many-to-one relationship to other table
         private void AddManyToOne(EntityTable other)
         {
-            string fkName = $"fk_{other.Name}";
-            AddForeignKey(fkName, other, false);
+            AddForeignKey(other, false);
             AddExternalField(other, RelationshipType.ManyToOne);
         }
         
@@ -131,6 +128,21 @@ namespace ORM.Core.Models
         {
             var fkTable = new ForeignKeyTable(this, other);
             ForeignKeyTables.Add(fkTable);
+        }
+
+        private List<EntityTable> GetBaseTables()
+        {
+            var parentTypes = new List<Type>();
+            var parentType = Type.BaseType;
+            
+            while (parentType != typeof(object))
+            {
+                if (parentType is null) break;
+                parentTypes.Add(parentType);
+                parentType = parentType.BaseType;
+            }
+
+            return parentTypes.Select(GetEntityTable).ToList();
         }
         
         private bool HasOneToOneRelationship(Type propertyType, Type entityType)
@@ -204,25 +216,24 @@ namespace ORM.Core.Models
             
             return navigatedProperty.PropertyType.IsCollectionOfOneType();
         }
-
-        // Get table for entity in a manner avoiding endless recursion
+        
         private EntityTable GetEntityTable(Type entityType)
         {
-            var table = _rootTables.FirstOrDefault(t => t.Type == entityType);
+            var table = EntityList.FirstOrDefault(t => t.Type == entityType);
             
             if (table is null)
             {
-                _rootTables.Add(this);
-                table = new EntityTable(entityType, _rootTables);
-                _rootTables.Remove(this);
+                EntityList.Add(this);
+                table = new EntityTable(entityType);
+                EntityList.Remove(this);
             }
 
             return table;
         }
 
-        private bool CalledByTable(Type type)
+        private static bool CalledByTable(Type entityType)
         {
-            return _rootTables.Any(t => t.Type == type);
+            return EntityList.Any(t => t.Type == entityType);
         }
     }
 }

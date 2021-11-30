@@ -9,6 +9,8 @@ namespace ORM.Core.Models
     public class Table
     {
         public string Name { get; }
+
+        public Column PrimaryKey { get; protected set; }
         
         public List<Column> Columns { get; } = new List<Column>();
 
@@ -42,13 +44,14 @@ namespace ORM.Core.Models
             ExternalFields.Add(field);
         }
 
-        protected void AddForeignKey(string fkName, EntityTable other, bool nullable)
+        protected void AddForeignKey(EntityTable other, bool nullable, bool targetTypeIsParentType = false)
         {
             var pkColumn = other.Columns.First(c => c.IsPrimaryKey);
+            string fkName = $"fk_{other.Name}_{pkColumn.Name}";
             var fkColumn = new Column(fkName, pkColumn.Type, isForeignKey: true, isNullable: nullable);
-            var foreignKeyConstraint = new ForeignKey(fkColumn, pkColumn, other);
+            var fkConstraint = new ForeignKey(fkColumn, pkColumn, other, isInheritanceKey: targetTypeIsParentType);
             Columns.Add(fkColumn);
-            ForeignKeys.Add(foreignKeyConstraint);
+            ForeignKeys.Add(fkConstraint);
         }
     }
 }

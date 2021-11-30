@@ -1,5 +1,14 @@
-﻿using Npgsql;
+﻿using System;
+using System.Collections.Generic;
+using System.Collections.Immutable;
+using System.Linq;
+using System.Net.WebSockets;
+using System.Reflection;
+using Npgsql;
+using ORM.Application.Entities;
 using ORM.Core;
+using ORM.Core.Models;
+using ORM.Core.Models.Extensions;
 using ORM.Linq;
 using ORM.Postgres.Linq;
 using ORM.Postgres.SqlDialect;
@@ -8,13 +17,13 @@ namespace ORM.Application
 {
     class Program
     {
-        private const string ConnectionString = "Server=localhost;Port=5432;User Id=postgres;Password=postgres;";
+        private const string ConnectionString = "Server=localhost;Port=5434;User Id=postgres;Password=postgres;";
         
         public static DbContext CreateDbContext()
         {
             var connection = new NpgsqlConnection(ConnectionString);
             var typeMapper = new PostgresDataTypeMapper();
-            var dialect = new PostgresSqlDialect(typeMapper);
+            var dialect = new PostgresCommandBuilder(connection, typeMapper);
             var dbContext = new DbContext(connection, dialect);
             connection.Open();
             return dbContext;
@@ -24,7 +33,7 @@ namespace ORM.Application
         {
             var connection = new NpgsqlConnection(ConnectionString);
             var typeMapper = new PostgresDataTypeMapper();
-            var dialect = new PostgresSqlDialect(typeMapper);
+            var dialect = new PostgresCommandBuilder(connection, typeMapper);
             var lazyLoader = new LazyLoader(connection, dialect);            
             var translator = new PostgresQueryTranslator();
             var provider = new QueryProvider(connection, translator, lazyLoader);
@@ -35,7 +44,10 @@ namespace ORM.Application
         
         static void Main(string[] args)
         {
-            Show.Linq.ShowToList();
+            var ctx = CreateDbContext();
+            ctx.EnsureCreated();
+            var r = ctx.GetAll<Author>().ToList();
+            Console.WriteLine();
         }
     }
 }

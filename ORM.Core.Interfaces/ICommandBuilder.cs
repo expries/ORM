@@ -1,9 +1,10 @@
 using System.Collections.Generic;
+using System.Data;
 using ORM.Core.Models;
 
 namespace ORM.Core.Interfaces
 {
-    public interface ISqlDialect
+    public interface ICommandBuilder
     {
         public string TranslateCreateTables(IEnumerable<Table> tables);
         
@@ -11,9 +12,9 @@ namespace ORM.Core.Interfaces
 
         public string TranslateAddForeignKeys(IEnumerable<Table> tables);
 
-        public string TranslateSelect(EntityTable table);
+        public IDbCommand BuildSelect(EntityTable table);
 
-        public string TranslateSelectById(EntityTable table, object pk);
+        public IDbCommand BuildSelectById(EntityTable table, object pk);
 
         public string TranslateInsert<T>(EntityTable table, T entity);
 
