@@ -1,7 +1,5 @@
-﻿using System.Linq;
-using System.Linq.Expressions;
+﻿using System.Linq.Expressions;
 using System.Text;
-using ORM.Core.Models;
 using ORM.Linq.Interfaces;
 using ORM.Postgres.Linq.ExpressionNodeSqlTranslators;
 

@@ -6,22 +6,18 @@ namespace ORM.Core.Interfaces
 {
     public interface ICommandBuilder
     {
-        public string TranslateCreateTables(IEnumerable<Table> tables);
-        
-        public string TranslateDropTables(IEnumerable<Table> tables);
+        public IDbCommand BuildEnsureCreated(List<Table> tables);
 
-        public string TranslateAddForeignKeys(IEnumerable<Table> tables);
+        public IDbCommand BuildSelect<T>();
 
-        public IDbCommand BuildSelect(EntityTable table);
+        public IDbCommand BuildSelectById<T>(object pk);
 
-        public IDbCommand BuildSelectById(EntityTable table, object pk);
+        public IDbCommand BuildSave<T>(T entity);
 
-        public string TranslateInsert<T>(EntityTable table, T entity);
+        public IDbCommand BuildSelectManyToOne<TMany, TOne>(TMany entity);
 
-        public string TranslateSelectManyToOne<TMany, TOne>(object pk);
+        public IDbCommand BuildSelectOneToMany<TOne, TMany>(TOne entity);
 
-        public string TranslateSelectOneToMany<TOne, TMany>(object pk);
-
-        public string TranslateSelectManyToMany<TManyA, TManyB>(object pk);
+        public IDbCommand BuildSelectManyToMany<TManyA, TManyB>(TManyA entity);
     }
 }

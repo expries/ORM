@@ -24,47 +24,34 @@ namespace ORM.Core
         public void EnsureCreated(Assembly? assembly = null)
         {
             assembly ??= Assembly.GetCallingAssembly();
-            
             var tables = GetTables(assembly).ToList();
-            string dropTablesSql = _commandBuilder.TranslateDropTables(tables);
-            string createTablesSql = _commandBuilder.TranslateCreateTables(tables);
-            string addForeignKeysSql = _commandBuilder.TranslateAddForeignKeys(tables);
-
-            var cmd = _connection.CreateCommand();
-            cmd.CommandText = dropTablesSql + createTablesSql + addForeignKeysSql;
+            var cmd = _commandBuilder.BuildEnsureCreated(tables);
             cmd.ExecuteNonQuery();
         }
 
         public void Save<T>(T entity)
         {
-            var table = typeof(T).ToTable();
-            string sql = _commandBuilder.TranslateInsert(table, entity);
-            
-            var cmd = _connection.CreateCommand();
-            cmd.CommandText = sql;
+            var cmd = _commandBuilder.BuildSave(entity);
             cmd.ExecuteNonQuery();
         }
 
         public IEnumerable<T> GetAll<T>()
         {
-            var entityTable = typeof(T).ToTable();
-            var cmd = _commandBuilder.BuildSelect(entityTable);
+            var cmd = _commandBuilder.BuildSelect<T>();
             var reader = cmd.ExecuteReader();
             return CreateObjectReader<T>(reader);
         }
 
         public T GetById<T>(object pk)
         {
-            var entityTable = typeof(T).ToTable();
-            var cmd = _commandBuilder.BuildSelectById(entityTable, pk);
+            var cmd = _commandBuilder.BuildSelectById<T>(pk);
             var reader = cmd.ExecuteReader();
-            
             return (T) CreateObjectReader<T>(reader);
         }
 
         private ObjectReader<T> CreateObjectReader<T>(IDataReader dataReader)
         {
-            var loader = new LazyLoader(_connection, _commandBuilder);
+            var loader = new LazyLoader(_commandBuilder);
             return new ObjectReader<T>(dataReader, loader);            
         }
 
@@ -79,31 +66,23 @@ namespace ORM.Core
         private static IEnumerable<Table> GetAllTables(IEnumerable<Table> tables)
         {
             var tableList = tables.ToList();
-            var allTables = tableList;
+            IEnumerable<Table> allTables = tableList;
             
             foreach (var table in tableList)
             {
                 var externalTables = table.ExternalFields.Select(_ => _.Table);
                 var manyToManyTables = table.ForeignKeyTables;
-                var parentTables = table.ForeignKeys.Where(k => k.IsInheritanceKey).Select(r => r.TableTo);
-                allTables = allTables.Union(parentTables).ToList();
                 allTables = allTables.Union(externalTables).ToList();
                 allTables = allTables.Union(manyToManyTables).ToList();
             }
-
-            foreach (var table in allTables.ToList())
-            {
-                var parentTables = table.ForeignKeys.Where(k => k.IsInheritanceKey).Select(r => r.TableTo);
-                allTables = allTables.Union(parentTables).ToList();
-            }
-
-            return allTables;
+            
+            return allTables.ToList();
         }
         
-        private List<Type?> GetEntityTypes(Assembly assembly)
+        private List<Type> GetEntityTypes(Assembly assembly)
         {
             var dbContexts = GetDbContextTypes(assembly);
-            var entities = new List<Type?>();
+            var entities = new List<Type>();
             
             foreach (var context in dbContexts)
             {
@@ -111,7 +90,7 @@ namespace ORM.Core
                 var propertyTypes = properties.Select(p => p.PropertyType).Distinct();
                 var genericProperties = propertyTypes.Where(t => t.IsGenericType);
                 var dbSetProperties = genericProperties.Where(t => t.GetGenericTypeDefinition() == typeof(DbSet<>));
-                var entityTypes = dbSetProperties.Select(t => t.GetGenericArguments().FirstOrDefault());
+                var entityTypes = dbSetProperties.Select(t => t.GetGenericArguments().First());
                 entities = entities.Union(entityTypes).ToList();
             }
 

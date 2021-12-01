@@ -44,12 +44,12 @@ namespace ORM.Core.Models
             ExternalFields.Add(field);
         }
 
-        protected void AddForeignKey(EntityTable other, bool nullable, bool targetTypeIsParentType = false)
+        protected void AddForeignKey(EntityTable other, bool nullable)
         {
             var pkColumn = other.Columns.First(c => c.IsPrimaryKey);
             string fkName = $"fk_{other.Name}_{pkColumn.Name}";
             var fkColumn = new Column(fkName, pkColumn.Type, isForeignKey: true, isNullable: nullable);
-            var fkConstraint = new ForeignKey(fkColumn, pkColumn, other, isInheritanceKey: targetTypeIsParentType);
+            var fkConstraint = new ForeignKey(fkColumn, pkColumn, other);
             Columns.Add(fkColumn);
             ForeignKeys.Add(fkConstraint);
         }

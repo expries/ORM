@@ -1,5 +1,4 @@
-﻿using System;
-using ORM.Core.Models.Enums;
+﻿using ORM.Core.Models.Enums;
 
 namespace ORM.Core.Models
 {

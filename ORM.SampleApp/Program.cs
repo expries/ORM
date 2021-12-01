@@ -1,14 +1,8 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Collections.Immutable;
 using System.Linq;
-using System.Net.WebSockets;
-using System.Reflection;
 using Npgsql;
 using ORM.Application.Entities;
 using ORM.Core;
-using ORM.Core.Models;
-using ORM.Core.Models.Extensions;
 using ORM.Linq;
 using ORM.Postgres.Linq;
 using ORM.Postgres.SqlDialect;
@@ -33,8 +27,8 @@ namespace ORM.Application
         {
             var connection = new NpgsqlConnection(ConnectionString);
             var typeMapper = new PostgresDataTypeMapper();
-            var dialect = new PostgresCommandBuilder(connection, typeMapper);
-            var lazyLoader = new LazyLoader(connection, dialect);            
+            var commandBuilder = new PostgresCommandBuilder(connection, typeMapper);
+            var lazyLoader = new LazyLoader(commandBuilder);            
             var translator = new PostgresQueryTranslator();
             var provider = new QueryProvider(connection, translator, lazyLoader);
             var dbSet = new DbSet<T>(provider);
@@ -45,8 +39,10 @@ namespace ORM.Application
         static void Main(string[] args)
         {
             var ctx = CreateDbContext();
-            ctx.EnsureCreated();
-            var r = ctx.GetAll<Author>().ToList();
+            //ctx.EnsureCreated();
+            //Show.GetEntity.GetAuthor();
+            //Show.SaveObject.ShowBook();
+            var books = ctx.GetAll<Author>().ToList();
             Console.WriteLine();
         }
     }

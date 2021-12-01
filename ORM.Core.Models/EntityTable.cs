@@ -11,8 +11,6 @@ namespace ORM.Core.Models
     public class EntityTable : Table
     {
         public Type Type { get; }
-        
-        public List<EntityTable> BaseTables { get; } = new List<EntityTable>();
 
         private static readonly List<EntityTable> EntityList = new List<EntityTable>();
 
@@ -35,7 +33,7 @@ namespace ORM.Core.Models
                                                  $"a table. Please provide a complex type.");
             }
 
-            var properties = entityType.GetNotInheritedProperties().ToList();
+            var properties = entityType.GetProperties();
             var columnProperties = properties.Where(p => p.PropertyType.IsInternalType());
 
             // process properties which types can be converted into table columns
@@ -44,18 +42,16 @@ namespace ORM.Core.Models
                 AddColumn(property);
             }
 
-            // process base tables
-            var baseTypeTables = GetBaseTables();
-            
-            foreach (var table in baseTypeTables)
-            {
-                AddForeignKey(table, nullable: false, targetTypeIsParentType: true);
-                BaseTables.Add(table);
-            }
-            
             // check if entity has a mandatory primary key column
-            var pk = Columns.FirstOrDefault(c => c.IsPrimaryKey);
-            PrimaryKey = pk ?? throw new InvalidEntityException($"Type {Type.Name} is missing a primary key column.");
+            try
+            {
+                var pk = Columns.SingleOrDefault(c => c.IsPrimaryKey);
+                PrimaryKey = pk ?? throw new InvalidEntityException($"Type {Type.Name} is missing a primary key column.");
+            }
+            catch (InvalidOperationException)
+            {
+                throw new InvalidEntityException($"Type {Type.Name} is not allowed to have more than one primary key");
+            }
 
             // process properties which are of an entity type
             var externalFieldProperties = properties.Where(p => p.PropertyType.IsExternalType());
@@ -130,21 +126,6 @@ namespace ORM.Core.Models
             ForeignKeyTables.Add(fkTable);
         }
 
-        private List<EntityTable> GetBaseTables()
-        {
-            var parentTypes = new List<Type>();
-            var parentType = Type.BaseType;
-            
-            while (parentType != typeof(object))
-            {
-                if (parentType is null) break;
-                parentTypes.Add(parentType);
-                parentType = parentType.BaseType;
-            }
-
-            return parentTypes.Select(GetEntityTable).ToList();
-        }
-        
         private bool HasOneToOneRelationship(Type propertyType, Type entityType)
         {
             if (propertyType.IsCollectionOfOneType())

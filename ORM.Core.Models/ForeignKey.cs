@@ -8,14 +8,11 @@ namespace ORM.Core.Models
 
         public Table TableTo { get; }
         
-        public bool IsInheritanceKey { get; }
-
-        public ForeignKey(Column columnFrom, Column columnTo, Table tableTo, bool isInheritanceKey = false)
+        public ForeignKey(Column columnFrom, Column columnTo, Table tableTo)
         {
             ColumnFrom = columnFrom;
             ColumnTo = columnTo;
             TableTo = tableTo;
-            IsInheritanceKey = isInheritanceKey;
         }
     }
 }

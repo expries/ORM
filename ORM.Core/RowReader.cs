@@ -154,7 +154,6 @@ namespace ORM.Core
 
         private void SetExternalProperty(PropertyInfo property, Type externalType)
         {
-            object? pk = GetPrimaryKey();
             var table = typeof(T).ToTable();
             var relationship = table.RelationshipTo(externalType);
 
@@ -170,17 +169,8 @@ namespace ORM.Core
             
             // execute loader method
             var genericMethod = method?.MakeGenericMethod(typeof(T), externalType);
-            object? result = genericMethod?.Invoke(_lazyLoader, new[] { pk });
+            object? result = genericMethod?.Invoke(_lazyLoader, new object[] { Current });
             property.SetValue(Current, result);
-        }
-
-        private object? GetPrimaryKey()
-        {
-            var table = typeof(T).ToTable();
-            var properties = typeof(T).GetProperties();
-            var pkColumn = table.Columns.First(c => c.IsPrimaryKey);
-            var pkProperty = properties.First(p => new Column(p).Name == pkColumn.Name);
-            return pkProperty.GetValue(Current);
         }
     }
 }

@@ -35,9 +35,9 @@ namespace ORM.Core.Models.Extensions
             return navigatedProperty;
         }
 
-        public static IEnumerable<PropertyInfo> GetNotInheritedProperties(this Type type)
+        public static Type? GetFirstGenericArgument(this Type type)
         {
-            return type.GetProperties(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly);
+            return !type.IsCollectionOfOneType() ? null : type.GetGenericArguments().First();
         }
 
         public static bool IsCollectionOfOneType(this Type type)

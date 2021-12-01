@@ -1,11 +1,15 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Data;
 using System.Linq;
+using System.Reflection;
 using System.Text;
+using Microsoft.VisualStudio.TestPlatform.ObjectModel.Engine;
+using Npgsql;
+using ORM.Core;
 using ORM.Core.Interfaces;
 using ORM.Core.Models;
-using ORM.Core.Models.Enums;
 using ORM.Core.Models.Extensions;
 using ORM.Postgres.Interfaces;
 
@@ -13,98 +17,262 @@ namespace ORM.Postgres.SqlDialect
 {
     public class PostgresCommandBuilder : ICommandBuilder
     {
-        private readonly IDbConnection _connection;
+        private readonly NpgsqlConnection _connection;
 
         private readonly IDbTypeMapper _typeMapper;
         
         private StringBuilder _sb = new StringBuilder();
+
+        private int _parameterCount = 0;
         
-        public PostgresCommandBuilder(IDbConnection connection, IDbTypeMapper typeMapper)
+        public PostgresCommandBuilder(NpgsqlConnection connection, IDbTypeMapper typeMapper)
         {
             _connection = connection;
             _typeMapper = typeMapper;
         }
 
-        public string TranslateCreateTables(IEnumerable<Table> tables)
+        public IDbCommand BuildEnsureCreated(List<Table> tables)
         {
-            _sb = new StringBuilder();
-            tables.ToList().ForEach(TranslateCreateTable);
-            return _sb.ToString();
+            tables = tables.ToList();
+            var createTables = TranslateCreateTables(tables);
+            var dropTables = TranslateDropTables(tables);
+            var addForeignKeys = TranslateAddForeignKeys(tables);
+
+            _sb.Append(dropTables.Sql);
+            _sb.Append(createTables.Sql);
+            _sb.Append(addForeignKeys.Sql);
+            
+            var query = CreateQuery();
+            return CreateCommand(query);
         }
 
-        public string TranslateDropTables(IEnumerable<Table> tables)
+        public IDbCommand BuildSelect<T>()
         {
-            _sb = new StringBuilder();
-            tables.ToList().ForEach(TranslateDropTable);
-            return _sb.ToString();
+            var query = TranslateSelect<T>();
+            return CreateCommand(query);
         }
         
-        public string TranslateAddForeignKeys(IEnumerable<Table> tables)
+        public IDbCommand BuildSelectById<T>(object pk)
+        {
+            var query = TranslateSelectById<T>(pk);
+            return CreateCommand(query);
+        }
+        
+        private Query CreateQuery(params QueryParameter[] parameters)
+        {
+            var parameterList = parameters.ToList();
+            return CreateQuery(parameterList);
+        }
+
+        private Query CreateQuery(List<QueryParameter> parameters)
+        {
+            string sql = _sb.ToString();
+            var query = new Query(sql, parameters);
+            _sb.Clear();
+            return query;
+        }
+        
+        private static NpgsqlConnection CreateConnection()
+        {
+            var connection = new NpgsqlConnection("Server=localhost;Port=5434;User Id=postgres;Password=postgres;");
+            connection.Open();
+            return connection;
+        }
+
+        private IDbCommand CreateCommand(Query query, bool newConnection = false)
+        {
+            var connection = newConnection ? CreateConnection() : _connection;
+            var cmd = connection.CreateCommand();
+            cmd.CommandText = query.Sql;
+            
+            foreach (var value in query.Parameters)
+            {
+                if (value.IsParameterized)
+                {
+                    cmd.Parameters.AddWithValue(value.ParameterName, value.ParameterValue);
+                }
+            }
+            
+            _parameterCount = 0;
+            return cmd;
+        }
+
+        public Query TranslateCreateTables(List<Table> tables)
+        {
+            var queries = tables.Select(TranslateCreateTable).ToList();
+            queries.ForEach(x => _sb.Append(x.Sql));
+            return CreateQuery();
+        }
+
+        public Query TranslateDropTables(List<Table> tables)
+        {
+            var queries = tables.Select(TranslateDropTable).ToList();
+            queries.ForEach(x => _sb.Append(x.Sql));
+            return CreateQuery();
+        }
+        
+        public Query TranslateAddForeignKeys(List<Table> tables)
         {
             _sb = new StringBuilder();
             
             foreach (var table in tables)
             {
-                table.ForeignKeys.ToList().ForEach(fc => TranslateAddForeignKey(fc, table));
+                var queries = table.ForeignKeys
+                    .Select(fc => TranslateAddForeignKey(fc, table))
+                    .ToList();
+                
+                queries.ForEach(x => _sb.Append(x.Sql));
             }
 
-            return _sb.ToString();
+            return CreateQuery();
+        }
+        
+        private Query TranslateSelect<T>()
+        {
+            var table = typeof(T).ToTable();
+            
+            var columns = table.Columns
+                .Where(c => c.IsMapped)
+                .Select(c => $"\"{table.Name}\".\"{c.Name}\"");
+            
+            string columnsString = string.Join(",", columns);
+            _sb.Append($"SELECT {columnsString} FROM \"{table.Name}\"");
+            return CreateQuery();
         }
 
-        public IDbCommand BuildSelect(EntityTable table)
+        private Query TranslateSelectById<T>(object pk)
         {
-            string selectSql = TranslateSelect(table);
-            return GetCommand(selectSql);
-        }
-        
-        public IDbCommand BuildSelectById(EntityTable table, object pk)
-        {
-            string selectByIdSql = TranslateSelectById(table, pk);
-            return GetCommand(selectByIdSql);
-        }
-        
-        private IDbCommand GetCommand(string sql)
-        {
-            var cmd = _connection.CreateCommand();
-            cmd.CommandText = sql;
-            return cmd;
-        }
-        
-        private string TranslateSelect(EntityTable table)
-        {
-            var tableList = new List<EntityTable> {table};
-            table.BaseTables.ForEach(x => tableList.Add(x));
+            // get primary key
+            var table = typeof(T).ToTable();
+            var properties = table.Type.GetProperties();
+            var pkProperty = properties.First(p => new Column(p).Name == table.PrimaryKey.Name);
+
+            var queryValue = GetValue(pkProperty, pk);
+            string selectSql = TranslateSelect<T>().Sql;
             
-            string columns = GetEscapedColumnsString(tableList);
-            string sql = $"SELECT {columns} FROM \"{table.Name}\"";
+            _sb
+                .Append(selectSql)
+                .Append(' ')
+                .Append($"WHERE \"{table.PrimaryKey.Name}\" = @{queryValue.ParameterName}");
             
-            foreach (var parentTable in table.BaseTables)
+            return CreateQuery(queryValue);
+        }
+
+        private Query TranslateSave<T>(T entity)
+        {
+            var table = entity.GetType().ToTable();
+            var values = GetParameters(entity);
+            var initialValues = values.ToList();
+            var externalFields = GetExternalFields(entity);
+
+            for (int i = 0; i < externalFields.Count; i++)
             {
-                var fk = table.ForeignKeys.First(k => k.IsInheritanceKey && k.TableTo == parentTable);
-                sql += $" JOIN \"{fk.TableTo.Name}\" ON \"{table.Name}\".\"{fk.ColumnFrom.Name}\" = \"{fk.TableTo.Name}\".\"{fk.ColumnTo.Name}\"";
+                var field = externalFields[i];
+                var fieldTable = field.ParameterValue.GetType().ToTable();
+                var subInsertQuery = TranslateSave(field.ParameterValue);
+                subInsertQuery.Parameters.ForEach(p => values.Add(p));
+
+                _sb
+                    .Append($"WITH table{i} AS")
+                    .Append(' ')
+                    .Append('(')
+                    .Append(Environment.NewLine)
+                    .Append(subInsertQuery.Sql)
+                    .Append(Environment.NewLine)
+                    .Append(')');
+                
+                string idSelectorSql = $"(SELECT \"{fieldTable.PrimaryKey.Name}\" FROM table{i})";
+                var value = new QueryParameter($"\"{field.Column}\"", idSelectorSql);
+                
+                initialValues.Add(value);
+                values.Add(value);
+
+                if (i < externalFields.Count - 1)
+                {
+                    _sb.Append(',');
+                }
+                
+                _sb.Append(Environment.NewLine);
             }
             
-            return sql;
+            string columns = string.Join(",", initialValues.Select(v => v.Column));
+            string parameters = string.Join(",", initialValues.Select(
+                v => v.IsParameterized ? $"@{v.ParameterName}" : v.ParameterValue)
+            );
+
+            _sb
+                .Append($"INSERT INTO \"{table.Name}\" ({columns})")
+                .Append(' ')
+                .Append(Environment.NewLine)
+                .Append($"VALUES ({parameters})")
+                .Append(' ')
+                .Append(Environment.NewLine)
+                .Append($"ON CONFLICT (\"{table.PrimaryKey.Name}\") DO")
+                .Append(' ')
+                .Append(Environment.NewLine)
+                .Append("UPDATE")
+                .Append(' ')
+                .Append("SET")
+                .Append(' ')
+                .Append(Environment.NewLine);
+
+            for (int i = 0; i < initialValues.Count; i++)
+            {
+                var value = initialValues[i];
+                object columnValue = value.IsParameterized ? $"@{value.ParameterName}" : value.ParameterValue;
+                _sb.Append($"{value.Column} = {columnValue}");
+
+                if (i < initialValues.Count - 1)
+                {
+                    _sb.Append(',');
+                }
+                
+                _sb.Append(Environment.NewLine);
+            }
+            
+            _sb.Append($"RETURNING \"{table.PrimaryKey.Name}\"");
+            return CreateQuery(values);
         }
 
-        private string TranslateSelectById(EntityTable table, object pk)
+        public IDbCommand BuildSave<T>(T entity)
         {
-            string selectSql = TranslateSelect(table);
-            return selectSql + $" WHERE \"{table.PrimaryKey.Name}\" = {pk}";
+            var query = TranslateSave(entity);
+            return CreateCommand(query);
         }
 
-        public string TranslateInsert<T>(EntityTable table, T entity)
+        private KeyValuePair<string, object> Parameterize(object value)
         {
-            string columns = GetUnescapedColumnsString(table);
-            string values = GetValuesString(table, entity);
-            return $"INSERT INTO \"{table.Name}\" ({columns}) VALUES ({values})";
+            string parameterName = $"p{++_parameterCount}";
+            var kv = new KeyValuePair<string, object>(parameterName, value);
+            return kv;
         }
 
-        public string TranslateSelectManyToOne<TMany, TOne>(object pk)
+        public IDbCommand BuildSelectManyToOne<TMany, TOne>(TMany entity)
+        {
+            var query = TranslateSelectManyToOne<TMany, TOne>(entity);
+            return CreateCommand(query, newConnection: true);
+        }
+
+        public IDbCommand BuildSelectOneToMany<TOne, TMany>(TOne entity)
+        {
+            var query = TranslateSelectOneToMany<TOne, TMany>(entity);
+            return CreateCommand(query, newConnection: true);
+        }
+
+        public IDbCommand BuildSelectManyToMany<TManyA, TManyB>(TManyA entity)
+        {
+            var query = TranslateSelectManyToMany<TManyA, TManyB>(entity);
+            return CreateCommand(query, newConnection: true);
+        }
+
+        private Query TranslateSelectManyToOne<TMany, TOne>(TMany entity)
         {
             var manyTable = typeof(TMany).ToTable();
             var oneTable = typeof(TOne).ToTable();
             
+            var pkProperty = typeof(TMany).GetProperties().First(p => new Column(p).Name == manyTable.PrimaryKey.Name);
+            object pk = pkProperty.GetValue(entity);
+
             var columns = oneTable.Columns
                 .Where(c => c.IsMapped)
                 .Select(c => $"t.\"{c.Name}\"");
@@ -116,27 +284,49 @@ namespace ORM.Postgres.SqlDialect
             var fk  = manyTable.ForeignKeys.First(c => c.TableTo.Name == oneTable.Name);
             var fkColumn = fk.ColumnFrom;
 
-            return $"SELECT {columnString} FROM \"{manyTable.Name}\" " +
-                   $"JOIN \"{oneTable.Name}\" t on t.\"{fkPkColumn.Name}\" = \"{manyTable.Name}\".\"{fkColumn.Name}\" " +
-                   $"WHERE \"{manyTable.Name}\".\"{pkColumn.Name}\" = {pk}";
+            _sb.Append($"SELECT {columnString} FROM \"{manyTable.Name}\" " +
+                       $"JOIN \"{oneTable.Name}\" t on t.\"{fkPkColumn.Name}\" = \"{manyTable.Name}\".\"{fkColumn.Name}\" " +
+                       $"WHERE \"{manyTable.Name}\".\"{pkColumn.Name}\" = {pk}");
+
+            return CreateQuery();
         }
 
-        public string TranslateSelectOneToMany<TOne, TMany>(object pk)
+        private Query TranslateSelectOneToMany<TOne, TMany>(TOne entity)
         {
             var oneTable = typeof(TOne).ToTable();
             var manyTable = typeof(TMany).ToTable();
-            
-            string columns = GetEscapedColumnsString(manyTable);
-            var pkColumn = oneTable.Columns.First(c => c.IsPrimaryKey);
-            var fk  = manyTable.ForeignKeys.First(c => c.TableTo.Name == oneTable.Name);
-            var fkColumn = fk.ColumnFrom;
 
-            return $"SELECT {columns} FROM \"{manyTable.Name}\" " +
-                   $"JOIN \"{oneTable.Name}\" t on t.\"{pkColumn.Name}\" = \"{manyTable.Name}\".\"{fkColumn.Name}\" " +
-                   $"WHERE t.\"{pkColumn.Name}\" = {pk}";
+            // get primary key property
+            var pkProperty = typeof(TOne).GetProperties().First(p => new Column(p).Name == oneTable.PrimaryKey.Name);
+            object pk = pkProperty.GetValue(entity);
+            
+            // parameterize primary key
+            (string paramName, object paramValue) = Parameterize(pk);
+            var pkParam = new QueryParameter(paramName, paramValue);
+
+            // build sql
+            var columns = manyTable.Columns
+                .Where(c => c.IsMapped)
+                .Select(c => $"\"{manyTable.Name}\".\"{c.Name}\"");
+
+            string columnsString = string.Join(',', columns);
+            var fk  = manyTable.ForeignKeys.First(c => c.TableTo.Name == oneTable.Name);
+
+            _sb
+                .Append($"SELECT {columnsString} FROM \"{manyTable.Name}\"")
+                .Append(' ')
+                .Append($"JOIN \"{oneTable.Name}\" t")
+                .Append(' ')
+                .Append("ON")
+                .Append(' ')
+                .Append($"t.\"{oneTable.PrimaryKey.Name}\" = \"{manyTable.Name}\".\"{fk.ColumnFrom.Name}\"")
+                .Append(' ')
+                .Append($"WHERE t.\"{oneTable.PrimaryKey.Name}\" = @{pkParam.ParameterName}");
+
+            return CreateQuery(pkParam);
         }
 
-        public string TranslateSelectManyToMany<TManyA, TManyB>(object pk)
+        private Query TranslateSelectManyToMany<TManyA, TManyB>(TManyA entity)
         {
             var manyATable = typeof(TManyA).ToTable();
             var manyBTable = typeof(TManyB).ToTable();
@@ -145,29 +335,35 @@ namespace ORM.Postgres.SqlDialect
                 _.TableA.Type == typeof(TManyA) && _.TableB.Type == typeof(TManyB) || 
                 _.TableA.Type == typeof(TManyB) && _.TableB.Type == typeof(TManyA));
 
-            var fkTableA = fkTable.ForeignKeys.First(fc => 
-                fc.TableTo is EntityTable t && t.Type == typeof(TManyA));
+            var fkTableA = fkTable.ForeignKeys.First(fk => 
+                fk.TableTo is EntityTable t && t.Type == typeof(TManyA));
             
-            var fkTableB = fkTable.ForeignKeys.First(fc => 
-                fc.TableTo is EntityTable t && t.Type == typeof(TManyB));
+            var fkTableB = fkTable.ForeignKeys.First(fk => 
+                fk.TableTo is EntityTable t && t.Type == typeof(TManyB));
             
-            string columns = GetEscapedColumnsString(manyBTable);
-            var pkColumnA = manyATable.Columns.First(c => c.IsPrimaryKey);
-            var pkColumnB = manyBTable.Columns.First(c => c.IsPrimaryKey);
+            var columns = manyBTable.Columns
+                .Where(c => c.IsMapped)
+                .Select(c => $"\"{manyBTable.Name}\".\"{c.Name}\"");
 
-            return $"SELECT {columns} FROM \"{manyATable.Name}\" " +
-                   $"JOIN \"{fkTable.Name}\" t ON \"{manyATable.Name}\".\"{pkColumnA.Name}\" = t.\"{fkTableA.ColumnFrom.Name}\" " +
-                   $"JOIN \"{manyBTable.Name}\" ON t.\"{fkTableB.ColumnFrom.Name}\" = \"{manyBTable.Name}\".\"{pkColumnB.Name}\"";
+            string columnsString = string.Join(",", columns);
+
+            _sb.Append($"SELECT {columnsString} FROM \"{manyATable.Name}\" " +
+                       $"JOIN \"{fkTable.Name}\" t ON \"{manyATable.Name}\".\"{manyATable.PrimaryKey.Name}\" = t.\"{fkTableA.ColumnFrom.Name}\" " +
+                       $"JOIN \"{manyBTable.Name}\" ON t.\"{fkTableB.ColumnFrom.Name}\" = \"{manyBTable.Name}\".\"{manyBTable.PrimaryKey.Name}\"");
+
+            return CreateQuery();
         }
 
-        private void TranslateDropTable(Table table)
+        private Query TranslateDropTable(Table table)
         {
             _sb
                 .Append($"DROP TABLE IF EXISTS \"{table.Name}\" CASCADE;")
                 .Append(Environment.NewLine);
+
+            return CreateQuery();
         }
         
-        private void TranslateCreateTable(Table table)
+        private Query TranslateCreateTable(Table table)
         {
             _sb
                 .Append($"CREATE TABLE \"{table.Name}\"")
@@ -195,6 +391,8 @@ namespace ORM.Postgres.SqlDialect
                 .Append(')')
                 .Append(';')
                 .Append(Environment.NewLine);
+
+            return CreateQuery();
         }
         
         private void TranslateColumn(Column column)
@@ -234,7 +432,7 @@ namespace ORM.Postgres.SqlDialect
             }
         }
         
-        private void TranslateAddForeignKey(ForeignKey foreignKey, Table table)
+        private Query TranslateAddForeignKey(ForeignKey foreignKey, Table table)
         {
             _sb
                 .Append("ALTER TABLE")
@@ -243,7 +441,7 @@ namespace ORM.Postgres.SqlDialect
                 .Append(' ')
                 .Append("ADD CONSTRAINT")
                 .Append(' ')
-                .Append($"\"fk_{table.Name}_{foreignKey.ColumnFrom.Name}_{foreignKey.ColumnTo.Name}\"")
+                .Append($"\"{foreignKey.ColumnFrom.Name}_{foreignKey.ColumnTo.Name}\"")
                 .Append(' ')
                 .Append("FOREIGN KEY")
                 .Append('(')
@@ -260,89 +458,54 @@ namespace ORM.Postgres.SqlDialect
                 .Append("ON DELETE CASCADE")
                 .Append(';')
                 .Append(Environment.NewLine);
-        }
-        
-        private static string GetEscapedColumnsString(EntityTable table)
-        {
-            var columns = table.Columns
-                .Where(c => c.IsMapped)
-                .Select(c => $"\"{table.Name}\".\"{c.Name}\"");
 
-            return string.Join(',', columns);
+            return CreateQuery();
         }
-        
-        private static string GetUnescapedColumnsString(EntityTable table)
-        {
-            var columns = table.Columns
-                .Where(c => c.IsMapped)
-                .Select(c => $"\"{c.Name}\"");
 
-            return string.Join(',', columns);
-        }
-        
-        private static string GetUnescapedColumnsString(List<EntityTable> tables)
+        private List<QueryParameter> GetParameters<T>(T entity)
         {
-            var columns = new List<string>();
+            var type = entity.GetType();
+            var table = type.ToTable();
+            var properties = type.GetProperties();
             
-            foreach (var table in tables)
-            {
-                table.Columns
-                    .Where(c => c.IsMapped)
-                    .Select(c => $"\"{c.Name}\"")
-                    .ToList()
-                    .ForEach(s => columns.Add(s));
-            }
-
-            return string.Join(',', columns);
+            return table.Columns
+                .Where(c => c.IsMapped && !c.IsForeignKey)
+                .Select(c => 
+                {
+                    var property = properties.First(p => new Column(p).Name == c.Name);
+                    object value = property.GetValue(entity) ?? DBNull.Value;
+                    return GetValue(property, value);
+                })
+                .ToList();
         }
-        
-        private static string GetEscapedColumnsString(List<EntityTable> tables)
+
+        private List<QueryParameter> GetExternalFields<T>(T entity)
         {
-            var columns = new List<string>();
+            var type = entity.GetType();
+            var table = type.ToTable();
+            var properties = type.GetProperties();
+            var values = new List<QueryParameter>();
             
-            foreach (var table in tables)
+            foreach (var fk in table.ForeignKeys)
             {
-                table.Columns
-                    .Where(c => c.IsMapped)
-                    .Select(c => $"\"{table.Name}\".\"{c.Name}\"")
-                    .ToList()
-                    .ForEach(s => columns.Add(s));
+                if (fk.TableTo is not EntityTable entityTable) continue;
+                var property = properties.First(p => p.PropertyType == entityTable.Type);
+                
+                object? value = property.GetValue(entity);
+                if (value is null) continue;
+                
+                var (paramName, paramValue) = Parameterize(value);
+                values.Add(new QueryParameter(fk.ColumnFrom.Name, paramName, paramValue));
             }
 
-            return string.Join(',', columns);
+            return values;
         }
 
-        private string GetValuesString<T>(EntityTable table, T entity)
+        private QueryParameter GetValue(PropertyInfo property, object value)
         {
-            var properties = typeof(T).GetProperties();
-            var values = table.Columns.Where(c => c.IsMapped).Select(c =>
-            {
-                var property = properties.FirstOrDefault(p => new Column(p).Name == c.Name);
-                object value = property?.GetValue(entity) ?? DBNull.Value;
-                return GetValue(value);
-            });
-
-            return string.Join(',', values);
-        }
-
-        private object GetValue(object value)
-        {
-            if (value is DBNull)
-            {
-                value = "NULL";
-            }
-            
-            if (value is string stringValue && stringValue != "NULL")
-            {
-                value = $"'{stringValue}'";
-            }
-
-            if (value is DateTime dateTime)
-            {
-                value = $"TIMESTAMP '{dateTime.Year}-{dateTime.Month}-{dateTime.Day} {dateTime.Hour}:{dateTime.Minute}:{dateTime.Second}'";
-            }
-
-            return value;
+            var column = new Column(property);
+            var (paramName, paramValue) = Parameterize(value);
+            return new QueryParameter($"\"{column.Name}\"", paramName, paramValue);
         }
     }
 }
