@@ -3,7 +3,9 @@ using System.Collections.Generic;
 using System.Data;
 using System.Linq;
 using System.Reflection;
+using ORM.Core.Cache;
 using ORM.Core.Interfaces;
+using ORM.Core.Loading;
 using ORM.Core.Models;
 using ORM.Core.Models.Extensions;
 
@@ -11,14 +13,19 @@ namespace ORM.Core
 {
     public class DbContext : IDbContext
     {
-        private readonly IDbConnection _connection;
-
         private readonly ICommandBuilder _commandBuilder;
 
-        public DbContext(IDbConnection connection, ICommandBuilder dialect)
+        private readonly ICache _cache;
+
+        public DbContext(ICommandBuilder dialect, ICache cache)
         {
-            _connection = connection;
             _commandBuilder = dialect;
+            _cache = cache;
+        }
+
+        protected DbContext(ICommandBuilder dialect) 
+            : this(dialect, new EntityCache())
+        {
         }
 
         public void EnsureCreated(Assembly? assembly = null)
@@ -37,22 +44,22 @@ namespace ORM.Core
 
         public IEnumerable<T> GetAll<T>()
         {
-            var cmd = _commandBuilder.BuildSelect<T>();
+            var cmd = _commandBuilder.BuildGetAll<T>();
             var reader = cmd.ExecuteReader();
             return CreateObjectReader<T>(reader);
         }
 
         public T GetById<T>(object pk)
         {
-            var cmd = _commandBuilder.BuildSelectById<T>(pk);
+            var cmd = _commandBuilder.BuildGetById<T>(pk);
             var reader = cmd.ExecuteReader();
             return (T) CreateObjectReader<T>(reader);
         }
 
         private ObjectReader<T> CreateObjectReader<T>(IDataReader dataReader)
         {
-            var loader = new LazyLoader(_commandBuilder);
-            return new ObjectReader<T>(dataReader, loader);            
+            var loader = new LazyLoader(_commandBuilder, _cache);
+            return new ObjectReader<T>(dataReader, loader, _cache);            
         }
 
         private IEnumerable<Table> GetTables(Assembly assembly)

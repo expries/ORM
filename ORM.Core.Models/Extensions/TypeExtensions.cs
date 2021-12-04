@@ -1,6 +1,5 @@
 using System;
 using System.Collections;
-using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 
@@ -54,6 +53,18 @@ namespace ORM.Core.Models.Extensions
 
             Type[] arguments = type.GetGenericArguments();
             return arguments.Length == 1;
+        }
+        
+        public static Type GetUnderlyingType(this Type type)
+        {
+            var underlyingType = type;
+            
+            if (underlyingType.IsCollectionOfOneType())
+            {
+                underlyingType = type.GetGenericArguments().First();
+            }
+
+            return underlyingType;
         }
         
         private static bool IsCollection(this Type type)

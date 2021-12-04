@@ -216,5 +216,24 @@ namespace ORM.Core.Models
         {
             return EntityList.Any(t => t.Type == entityType);
         }
+        
+        public IEnumerable<PropertyInfo> GetPropertiesOf(RelationshipType relationship)
+        {
+            var properties = Type.GetProperties();
+
+            foreach (var property in properties)
+            {
+                var underlyingType = property.PropertyType.GetUnderlyingType();
+                var field = ExternalFields.FirstOrDefault(f => 
+                    f.Table.Type == underlyingType && 
+                    f.Relationship == relationship
+                );
+
+                if (field is not null)
+                {
+                    yield return property;
+                }
+            }
+        }
     }
 }

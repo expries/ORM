@@ -1,4 +1,4 @@
-﻿using System;
+﻿using System.Collections.Generic;
 using ORM.Application.Entities;
 
 namespace ORM.Application.Show
@@ -11,7 +11,7 @@ namespace ORM.Application.Show
             var product = new Product { Name = "my favourite book", Price = 10, Purchases = 5 };
             dbContext.Save(product);
         }
-
+        
         public static void ShowBook()
         {
             var dbContext = Program.CreateDbContext();
@@ -19,27 +19,31 @@ namespace ORM.Application.Show
             {
                 Author = new Author
                 {
-                    PersonId = 1,
+                    PersonId = 3,
                     Interest = 10,
                     Price = 100,
-                    FirstName = "Max",
-                    LastName = "Mustermann"
+                    FirstName = "Alex",
+                    LastName = "Test"   
                 },
-                Likes = 10,
-                Price = 100,
-                Title = "My book",
-                Purchases = 10,
-                BookId = 1
+                Likes = 3,
+                Price = 300,
+                Title = "My book 3",
+                Purchases = 30,
+                BookId = 3
             };
             
             dbContext.Save(book);
-            Console.WriteLine();
         }
 
         public static void ShowSeller()
         {
             var dbContext = Program.CreateDbContext();
-            var seller = new Seller { Name = "Seller #1", Id = 1 };
+            var seller = new Seller
+            {
+                Name = "Seller #1", 
+                Id = 1, 
+                Products = new List<Product>()
+            };
             dbContext.Save(seller);
         }
 
@@ -52,7 +56,26 @@ namespace ORM.Application.Show
                 Interest = 10,
                 Price = 100,
                 FirstName = "Max",
-                LastName = "Mustermann"
+                LastName = "Mustermann",
+                Books = new List<Book>
+                {
+                     new Book
+                     {
+                         Likes = 10,
+                         Price = 100,
+                         Title = "My book",
+                         Purchases = 10,
+                         BookId = 1
+                     },
+                     new Book
+                     {
+                         Likes = 20,
+                         Price = 200,
+                         Title = "My book 2",
+                         Purchases = 20,
+                         BookId = 2
+                     }
+                }
             };
             dbContext.Save(author);
         }

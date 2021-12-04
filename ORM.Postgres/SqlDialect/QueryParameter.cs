@@ -1,38 +1,36 @@
-﻿using System.Collections.Generic;
-
-namespace ORM.Postgres.SqlDialect
+﻿namespace ORM.Postgres.SqlDialect
 {
     public class QueryParameter
     {
         public string Column { get; set; }
         
-        public string ParameterName { get; set; }
+        public string Name { get; set; }
         
-        public object ParameterValue { get; set; }
+        public object Value { get; set; }
 
         public bool IsParameterized { get; set; }
         
-        public QueryParameter(string column, string parameterName, object parameterValue)
+        public QueryParameter(string column, string name, object value)
         {
             Column = column;
-            ParameterName = parameterName;
-            ParameterValue = parameterValue;
+            Name = name;
+            Value = value;
             IsParameterized = true;
         }
 
-        public QueryParameter(string parameterName, object parameterValue)
+        public QueryParameter(string name, object value)
         {
             Column = string.Empty;
-            ParameterName = parameterName;
-            ParameterValue = parameterValue;
+            Name = name;
+            Value = value;
             IsParameterized = true;    
         }
 
         public QueryParameter(string column, string sql)
         {
             Column = column;
-            ParameterName = string.Empty;
-            ParameterValue = sql;
+            Name = string.Empty;
+            Value = sql;
             IsParameterized = false;
         }
     }

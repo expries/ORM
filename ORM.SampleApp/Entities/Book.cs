@@ -1,3 +1,4 @@
+using System;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using System.Diagnostics.CodeAnalysis;
@@ -23,7 +24,7 @@ namespace ORM.Application.Entities
         
         [Column("Likings")]
         public int Likes { get; set; }
-        
-        public Author Author { get; set; }
+
+        public virtual Author Author { get; set; }
     }
 }

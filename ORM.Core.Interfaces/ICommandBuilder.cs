@@ -8,16 +8,16 @@ namespace ORM.Core.Interfaces
     {
         public IDbCommand BuildEnsureCreated(List<Table> tables);
 
-        public IDbCommand BuildSelect<T>();
+        public IDbCommand BuildGetAll<T>();
 
-        public IDbCommand BuildSelectById<T>(object pk);
+        public IDbCommand BuildGetById<T>(object pk);
 
         public IDbCommand BuildSave<T>(T entity);
 
-        public IDbCommand BuildSelectManyToOne<TMany, TOne>(TMany entity);
+        public IDbCommand BuildLoadManyToOne<TMany, TOne>(TMany entity);
 
-        public IDbCommand BuildSelectOneToMany<TOne, TMany>(TOne entity);
+        public IDbCommand BuildLoadOneToMany<TOne, TMany>(TOne entity);
 
-        public IDbCommand BuildSelectManyToMany<TManyA, TManyB>(TManyA entity);
+        public IDbCommand BuildLoadManyToMany<TManyA, TManyB>(TManyA entity);
     }
 }

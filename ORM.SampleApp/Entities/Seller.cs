@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 
 namespace ORM.Application.Entities
@@ -10,6 +11,6 @@ namespace ORM.Application.Entities
         
         public string? Name { get; set; }
         
-        public List<Product> Product { get; set; }
+        public virtual List<Product> Products { get; set; }
     }
 }

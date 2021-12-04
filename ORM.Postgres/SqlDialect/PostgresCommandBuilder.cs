@@ -5,11 +5,10 @@ using System.Data;
 using System.Linq;
 using System.Reflection;
 using System.Text;
-using Microsoft.VisualStudio.TestPlatform.ObjectModel.Engine;
 using Npgsql;
-using ORM.Core;
 using ORM.Core.Interfaces;
 using ORM.Core.Models;
+using ORM.Core.Models.Enums;
 using ORM.Core.Models.Extensions;
 using ORM.Postgres.Interfaces;
 
@@ -24,6 +23,10 @@ namespace ORM.Postgres.SqlDialect
         private StringBuilder _sb = new StringBuilder();
 
         private int _parameterCount = 0;
+        
+        private int _tableCount = 0;
+
+        private Type? _lastType = null;
         
         public PostgresCommandBuilder(NpgsqlConnection connection, IDbTypeMapper typeMapper)
         {
@@ -46,13 +49,13 @@ namespace ORM.Postgres.SqlDialect
             return CreateCommand(query);
         }
 
-        public IDbCommand BuildSelect<T>()
+        public IDbCommand BuildGetAll<T>()
         {
             var query = TranslateSelect<T>();
             return CreateCommand(query);
         }
         
-        public IDbCommand BuildSelectById<T>(object pk)
+        public IDbCommand BuildGetById<T>(object pk)
         {
             var query = TranslateSelectById<T>(pk);
             return CreateCommand(query);
@@ -89,11 +92,15 @@ namespace ORM.Postgres.SqlDialect
             {
                 if (value.IsParameterized)
                 {
-                    cmd.Parameters.AddWithValue(value.ParameterName, value.ParameterValue);
+                    cmd.Parameters.AddWithValue(value.Name, value.Value);
                 }
             }
-            
+
+            _tableCount = 0;
             _parameterCount = 0;
+            
+            Console.WriteLine(cmd.CommandText);
+            
             return cmd;
         }
 
@@ -147,64 +154,44 @@ namespace ORM.Postgres.SqlDialect
             var properties = table.Type.GetProperties();
             var pkProperty = properties.First(p => new Column(p).Name == table.PrimaryKey.Name);
 
-            var queryValue = GetValue(pkProperty, pk);
+            var parameter = GetParameter(pkProperty, pk);
             string selectSql = TranslateSelect<T>().Sql;
             
             _sb
                 .Append(selectSql)
                 .Append(' ')
-                .Append($"WHERE \"{table.PrimaryKey.Name}\" = @{queryValue.ParameterName}");
+                .Append($"WHERE \"{table.PrimaryKey.Name}\" = @{parameter.Name}");
             
-            return CreateQuery(queryValue);
+            return CreateQuery(parameter);
         }
 
         private Query TranslateSave<T>(T entity)
         {
-            var table = entity.GetType().ToTable();
-            var values = GetParameters(entity);
-            var initialValues = values.ToList();
-            var externalFields = GetExternalFields(entity);
+            var saveCollectionQuery = TranslateSaveCollection(entity);
 
-            for (int i = 0; i < externalFields.Count; i++)
+            if (saveCollectionQuery.Sql != string.Empty)
             {
-                var field = externalFields[i];
-                var fieldTable = field.ParameterValue.GetType().ToTable();
-                var subInsertQuery = TranslateSave(field.ParameterValue);
-                subInsertQuery.Parameters.ForEach(p => values.Add(p));
-
-                _sb
-                    .Append($"WITH table{i} AS")
-                    .Append(' ')
-                    .Append('(')
-                    .Append(Environment.NewLine)
-                    .Append(subInsertQuery.Sql)
-                    .Append(Environment.NewLine)
-                    .Append(')');
-                
-                string idSelectorSql = $"(SELECT \"{fieldTable.PrimaryKey.Name}\" FROM table{i})";
-                var value = new QueryParameter($"\"{field.Column}\"", idSelectorSql);
-                
-                initialValues.Add(value);
-                values.Add(value);
-
-                if (i < externalFields.Count - 1)
-                {
-                    _sb.Append(',');
-                }
-                
-                _sb.Append(Environment.NewLine);
+                return saveCollectionQuery;
             }
             
-            string columns = string.Join(",", initialValues.Select(v => v.Column));
-            string parameters = string.Join(",", initialValues.Select(
-                v => v.IsParameterized ? $"@{v.ParameterName}" : v.ParameterValue)
-            );
+            var table = entity.GetType().ToTable();
+            var parameters = GetParameters(entity);
+            var saveEntityParameters = parameters.ToList();
+            
+            var saveForeignKeyEntities =  TranslateSaveOneToManyEntities(entity, saveEntityParameters);
+            saveForeignKeyEntities.Parameters.ForEach(p => parameters.Add(p));
+            _sb.Append(saveForeignKeyEntities.Sql);
+            
+            var entityColumns = saveEntityParameters.Select(p => p.Column);
+            var entityValues = saveEntityParameters.Select(p => p.IsParameterized ? $"@{p.Name}" : p.Value);
+            string entityColumnsString = string.Join(',', entityColumns);
+            string entityValuesString = string.Join(',', entityValues);
 
             _sb
-                .Append($"INSERT INTO \"{table.Name}\" ({columns})")
+                .Append($"INSERT INTO \"{table.Name}\" ({entityColumnsString})")
                 .Append(' ')
                 .Append(Environment.NewLine)
-                .Append($"VALUES ({parameters})")
+                .Append($"VALUES ({entityValuesString})")
                 .Append(' ')
                 .Append(Environment.NewLine)
                 .Append($"ON CONFLICT (\"{table.PrimaryKey.Name}\") DO")
@@ -216,13 +203,13 @@ namespace ORM.Postgres.SqlDialect
                 .Append(' ')
                 .Append(Environment.NewLine);
 
-            for (int i = 0; i < initialValues.Count; i++)
+            for (int i = 0; i < saveEntityParameters.Count; i++)
             {
-                var value = initialValues[i];
-                object columnValue = value.IsParameterized ? $"@{value.ParameterName}" : value.ParameterValue;
-                _sb.Append($"{value.Column} = {columnValue}");
+                var parameter = saveEntityParameters[i];
+                object columnValue = parameter.IsParameterized ? $"@{parameter.Name}" : parameter.Value;
+                _sb.Append($"{parameter.Column} = {columnValue}");
 
-                if (i < initialValues.Count - 1)
+                if (i < saveEntityParameters.Count - 1)
                 {
                     _sb.Append(',');
                 }
@@ -231,9 +218,98 @@ namespace ORM.Postgres.SqlDialect
             }
             
             _sb.Append($"RETURNING \"{table.PrimaryKey.Name}\"");
-            return CreateQuery(values);
+            return CreateQuery(parameters);
         }
 
+
+        private Query TranslateSaveCollection<T>(T entity)
+        {
+            var table = entity.GetType().ToTable();
+            var parameters = new List<QueryParameter>();
+            var saveCollectionSqlBuilder = new StringBuilder();
+
+            // get properties on entity which store a collection
+            var collectionProperties = table.GetPropertiesOf(RelationshipType.OneToMany);
+            
+            foreach (var property in collectionProperties)
+            {
+                // to avoid recursion
+                if (_lastType == table.Type)
+                {
+                    break;
+                }
+                
+                _lastType = table.Type;
+
+                // get the collection
+                var collection = property.GetValue(entity) as IEnumerable ?? new List<object?>();
+                
+                // get the navigated property of the collection item type
+                var collectionItemType = property.PropertyType.GetUnderlyingType();
+                var navigatedProperty = collectionItemType.GetNavigatedProperty(table.Type);
+                if (navigatedProperty is null) continue;
+                
+                // create query to save items of collection
+                foreach (var item in collection)
+                {
+                    // set entity on collection item
+                    navigatedProperty.SetValue(item, entity);
+                    
+                    // create query
+                    var itemQuery = TranslateSave(item);
+                    itemQuery.Parameters.ForEach(parameters.Add);
+                    
+                    saveCollectionSqlBuilder
+                        .Append(itemQuery.Sql)
+                        .Append(';')
+                        .Append(Environment.NewLine);
+                }
+            }
+
+            string sql = saveCollectionSqlBuilder.ToString();
+            _sb.Append(sql);
+            return CreateQuery(parameters);
+        }
+
+        private Query TranslateSaveOneToManyEntities<T>(T entity, List<QueryParameter> entityParameter)
+        {
+            var parameters = new List<QueryParameter>();
+            var fkParameters = GetForeignKeyParameters(entity);
+
+            for (int i = 0; i < fkParameters.Count; i++)
+            {
+                var parameter = fkParameters[i];
+                var fieldTable = parameter.Value.GetType().ToTable();
+                var saveFieldQuery = TranslateSave(parameter.Value);
+                saveFieldQuery.Parameters.ForEach(p => parameters.Add(p));
+
+                _sb
+                    .Append($"WITH table{_tableCount} AS")
+                    .Append(' ')
+                    .Append('(')
+                    .Append(Environment.NewLine)
+                    .Append(saveFieldQuery.Sql)
+                    .Append(Environment.NewLine)
+                    .Append(')');
+                
+                string selectFkSql = $"(SELECT \"{fieldTable.PrimaryKey.Name}\" FROM table{_tableCount})";
+                var fkParameter = new QueryParameter($"\"{parameter.Column}\"", selectFkSql);
+                
+                parameters.Add(fkParameter);
+                entityParameter.Add(fkParameter);
+
+                if (i < fkParameters.Count - 1)
+                {
+                    _sb.Append(',');
+                }
+                
+                _tableCount++;
+                _sb.Append(Environment.NewLine);
+            }
+
+            return CreateQuery(parameters);
+        }
+        
         public IDbCommand BuildSave<T>(T entity)
         {
             var query = TranslateSave(entity);
@@ -247,25 +323,25 @@ namespace ORM.Postgres.SqlDialect
             return kv;
         }
 
-        public IDbCommand BuildSelectManyToOne<TMany, TOne>(TMany entity)
+        public IDbCommand BuildLoadManyToOne<TMany, TOne>(TMany entity)
         {
-            var query = TranslateSelectManyToOne<TMany, TOne>(entity);
+            var query = TranslateLoadManyToOne<TMany, TOne>(entity);
             return CreateCommand(query, newConnection: true);
         }
 
-        public IDbCommand BuildSelectOneToMany<TOne, TMany>(TOne entity)
+        public IDbCommand BuildLoadOneToMany<TOne, TMany>(TOne entity)
         {
-            var query = TranslateSelectOneToMany<TOne, TMany>(entity);
+            var query = TranslateLoadOneToMany<TOne, TMany>(entity);
             return CreateCommand(query, newConnection: true);
         }
 
-        public IDbCommand BuildSelectManyToMany<TManyA, TManyB>(TManyA entity)
+        public IDbCommand BuildLoadManyToMany<TManyA, TManyB>(TManyA entity)
         {
-            var query = TranslateSelectManyToMany<TManyA, TManyB>(entity);
+            var query = TranslateLoadManyToMany<TManyA, TManyB>(entity);
             return CreateCommand(query, newConnection: true);
         }
 
-        private Query TranslateSelectManyToOne<TMany, TOne>(TMany entity)
+        private Query TranslateLoadManyToOne<TMany, TOne>(TMany entity)
         {
             var manyTable = typeof(TMany).ToTable();
             var oneTable = typeof(TOne).ToTable();
@@ -291,7 +367,7 @@ namespace ORM.Postgres.SqlDialect
             return CreateQuery();
         }
 
-        private Query TranslateSelectOneToMany<TOne, TMany>(TOne entity)
+        private Query TranslateLoadOneToMany<TOne, TMany>(TOne entity)
         {
             var oneTable = typeof(TOne).ToTable();
             var manyTable = typeof(TMany).ToTable();
@@ -321,12 +397,12 @@ namespace ORM.Postgres.SqlDialect
                 .Append(' ')
                 .Append($"t.\"{oneTable.PrimaryKey.Name}\" = \"{manyTable.Name}\".\"{fk.ColumnFrom.Name}\"")
                 .Append(' ')
-                .Append($"WHERE t.\"{oneTable.PrimaryKey.Name}\" = @{pkParam.ParameterName}");
+                .Append($"WHERE t.\"{oneTable.PrimaryKey.Name}\" = @{pkParam.Name}");
 
             return CreateQuery(pkParam);
         }
 
-        private Query TranslateSelectManyToMany<TManyA, TManyB>(TManyA entity)
+        private Query TranslateLoadManyToMany<TManyA, TManyB>(TManyA entity)
         {
             var manyATable = typeof(TManyA).ToTable();
             var manyBTable = typeof(TManyB).ToTable();
@@ -474,17 +550,17 @@ namespace ORM.Postgres.SqlDialect
                 {
                     var property = properties.First(p => new Column(p).Name == c.Name);
                     object value = property.GetValue(entity) ?? DBNull.Value;
-                    return GetValue(property, value);
+                    return GetParameter(property, value);
                 })
                 .ToList();
         }
 
-        private List<QueryParameter> GetExternalFields<T>(T entity)
+        private List<QueryParameter> GetForeignKeyParameters<T>(T entity)
         {
             var type = entity.GetType();
             var table = type.ToTable();
             var properties = type.GetProperties();
-            var values = new List<QueryParameter>();
+            var parameters = new List<QueryParameter>();
             
             foreach (var fk in table.ForeignKeys)
             {
@@ -495,13 +571,14 @@ namespace ORM.Postgres.SqlDialect
                 if (value is null) continue;
                 
                 var (paramName, paramValue) = Parameterize(value);
-                values.Add(new QueryParameter(fk.ColumnFrom.Name, paramName, paramValue));
+                var parameter = new QueryParameter(fk.ColumnFrom.Name, paramName, paramValue);
+                parameters.Add(parameter);
             }
 
-            return values;
+            return parameters;
         }
 
-        private QueryParameter GetValue(PropertyInfo property, object value)
+        private QueryParameter GetParameter(PropertyInfo property, object value)
         {
             var column = new Column(property);
             var (paramName, paramValue) = Parameterize(value);

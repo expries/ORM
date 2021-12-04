@@ -26,6 +26,6 @@ namespace ORM.Application.Entities
         
         public DateTime InsertedInStore { get; set; }
         
-        public List<Seller> Sellers { get; set; }
+        public virtual List<Seller> Sellers { get; set; }
     }
 }

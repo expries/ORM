@@ -4,15 +4,16 @@ using System.Collections.Generic;
 using System.Data;
 using ORM.Core.Interfaces;
 
-namespace ORM.Core
+namespace ORM.Core.Loading
 {
     public class ObjectReader<T> : IEnumerable<T>, IEnumerable
     {
         private IEnumerator<T>? _enumerator;
         
-        public ObjectReader(IDataReader reader, ILazyLoader lazyLoader)
+
+        public ObjectReader(IDataReader reader, ILazyLoader lazyLoader, ICache cache)
         {
-            _enumerator = new RowReader<T>(reader, lazyLoader);
+            _enumerator = new RowReader<T>(reader, lazyLoader, cache);
         }
         
         IEnumerator IEnumerable.GetEnumerator()

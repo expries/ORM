@@ -4,13 +4,14 @@ using System.Collections.Generic;
 using System.Data;
 using System.Linq;
 using System.Reflection;
+using System.Threading.Tasks.Dataflow;
 using ORM.Core.Interfaces;
 using ORM.Core.Models;
 using ORM.Core.Models.Enums;
 using ORM.Core.Models.Exceptions;
 using ORM.Core.Models.Extensions;
 
-namespace ORM.Core
+namespace ORM.Core.Loading
 {
     internal class RowReader<T> : IEnumerator<T>
     {
@@ -18,16 +19,19 @@ namespace ORM.Core
         
         private readonly ILazyLoader _lazyLoader;
 
+        private readonly ICache _cache;
+
         private Dictionary<int, string>? _schema;
 
         public T Current { get; private set; }
 
         object? IEnumerator.Current => Current;
         
-        public RowReader(IDataReader reader, ILazyLoader lazyLoader)
+        public RowReader(IDataReader reader, ILazyLoader lazyLoader, ICache cache)
         {
             _reader = reader;
             _lazyLoader = lazyLoader;
+            _cache = cache;
         }
         
         public bool MoveNext()
@@ -50,8 +54,10 @@ namespace ORM.Core
             }
             else
             {
-                Current = Activator.CreateInstance<T>();
+                var proxyType = ProxyFactory.CreateProxy(typeof(T));
+                Current = (dynamic) Activator.CreateInstance(proxyType);
                 ReadExternalType();  
+                _cache.Save(Current);
             }
 
             return true;
@@ -158,19 +164,46 @@ namespace ORM.Core
             var relationship = table.RelationshipTo(externalType);
 
             // select lazy loader method to use
-            var method = relationship switch
+            var loadMethodInfo = relationship switch
             {
-                RelationshipType.OneToOne => typeof(ILazyLoader).GetMethod(nameof(LazyLoader.LoadOneToMany)),
-                RelationshipType.OneToMany => typeof(ILazyLoader).GetMethod(nameof(LazyLoader.LoadOneToMany)),
-                RelationshipType.ManyToOne => typeof(ILazyLoader).GetMethod(nameof(LazyLoader.LoadManyToOne)),
-                RelationshipType.ManyToMany => typeof(ILazyLoader).GetMethod(nameof(LazyLoader.LoadManyToMany)),
+                RelationshipType.OneToOne => GetType().GetMethod(nameof(LoadOneToMany), BindingFlags.Instance | BindingFlags.NonPublic),
+                RelationshipType.OneToMany => GetType().GetMethod(nameof(LoadOneToMany), BindingFlags.Instance | BindingFlags.NonPublic),
+                RelationshipType.ManyToOne => GetType().GetMethod(nameof(LoadManyToOne), BindingFlags.Instance | BindingFlags.NonPublic),
+                RelationshipType.ManyToMany => GetType().GetMethod(nameof(LoadManyToMany), BindingFlags.Instance | BindingFlags.NonPublic),
                 _ => throw new ObjectMappingException($"No relation found for property {property.Name} on type {typeof(T).Name}")
             };
+
+            Console.WriteLine(
+                $"Invoking {loadMethodInfo.Name} for {Current.GetType().Name} to " +
+                $"resolve {property.Name} ({property.PropertyType.FullName})");
             
-            // execute loader method
-            var genericMethod = method?.MakeGenericMethod(typeof(T), externalType);
-            object? result = genericMethod?.Invoke(_lazyLoader, new object[] { Current });
-            property.SetValue(Current, result);
+            // build lazy loading method
+            var loadMethod = loadMethodInfo.MakeGenericMethod(typeof(T), externalType);
+            object? lazyResult = loadMethod.Invoke(this, new object[] {Current});
+
+            // get backing field of proxy and write lazy result to it
+            var fields = Current.GetType().GetFields(BindingFlags.Instance | BindingFlags.NonPublic);
+            var backingField = fields.FirstOrDefault(f => f.Name == $"_lazy{property.Name}");
+            backingField?.SetValue(Current, lazyResult);
+            Console.WriteLine();
+        }
+
+        private Lazy<List<TMany>> LoadOneToMany<TOne, TMany>(TOne entity)
+        {
+            List<TMany> Loading() => _lazyLoader.LoadOneToMany<TOne, TMany>(entity);
+            return new Lazy<List<TMany>>(Loading);
+        }
+
+        private Lazy<TOne> LoadManyToOne<TMany, TOne>(TMany entity)
+        {
+            TOne Loading() => _lazyLoader.LoadManyToOne<TMany, TOne>(entity);
+            return new Lazy<TOne>(Loading);
+        }
+        
+        private Lazy<List<TManyB>> LoadManyToMany<TManyA, TManyB>(TManyA entity)
+        {
+            List<TManyB> Loading() => _lazyLoader.LoadManyToMany<TManyA, TManyB>(entity);
+            return new Lazy<List<TManyB>>(Loading);
         }
     }
 }
