@@ -1,6 +1,7 @@
 using System;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using System.Linq;
 using System.Reflection;
 using ORM.Core.Models.Attributes;
 
@@ -41,6 +42,20 @@ namespace ORM.Core.Models
             Type = property.PropertyType;
             IsMapped = true;
             ReadAttributes(property);
+        }
+
+        public object? GetValue<T>(T entity)
+        {
+            var property = GetProperty(entity);
+            object? value = property?.GetValue(entity);
+            return value;
+        }
+
+        public PropertyInfo GetProperty<T>(T entity)
+        {
+            var properties = entity.GetType().GetProperties();
+            var property = properties.FirstOrDefault(p => new Column(p).Name == Name);
+            return property;
         }
 
         private void ReadAttributes(PropertyInfo property)

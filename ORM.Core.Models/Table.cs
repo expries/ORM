@@ -8,7 +8,7 @@ namespace ORM.Core.Models
 {
     public class Table
     {
-        public string Name { get; }
+        public string Name { get; protected set; }
 
         public Column PrimaryKey { get; protected set; }
         

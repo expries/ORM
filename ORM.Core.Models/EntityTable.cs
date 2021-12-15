@@ -20,8 +20,50 @@ namespace ORM.Core.Models
         /// <param name="entityType"></param>
         public EntityTable(Type entityType) : base(entityType.Name)
         {
+            var proxiedType = entityType.GetProxiedType();
+            
+            if (proxiedType is not null)
+            {
+                entityType = proxiedType;
+            }
+            
             Type = entityType;
             ReadType(entityType);
+        }
+        
+        /// <summary>
+        /// Get the property of the entity type that corresponds to a given column
+        /// </summary>
+        /// <param name="column"></param>
+        /// <returns></returns>
+        public PropertyInfo? GetPropertyForColumn(Column column)
+        {
+            var properties = Type.GetProperties();
+            return properties.FirstOrDefault(p => new Column(p).Name == column.Name);
+        }
+        
+        /// <summary>
+        /// Get the properties that form a given relationship with the entity type 
+        /// </summary>
+        /// <param name="relationship"></param>
+        /// <returns></returns>
+        public IEnumerable<PropertyInfo> GetPropertiesOf(RelationshipType relationship)
+        {
+            var properties = Type.GetProperties();
+
+            foreach (var property in properties)
+            {
+                var underlyingType = property.PropertyType.GetUnderlyingType();
+                var field = ExternalFields.FirstOrDefault(f => 
+                    f.Table.Type == underlyingType && 
+                    f.Relationship == relationship
+                );
+
+                if (field is not null)
+                {
+                    yield return property;
+                }
+            }
         }
 
         // Build table based on given entity type
@@ -67,7 +109,7 @@ namespace ORM.Core.Models
         {
             // generate the entity's table
             var type = property.PropertyType;
-            var entityType = type.IsCollectionOfOneType() ? type.GetGenericArguments().First() : type;
+            var entityType = type.GetUnderlyingType();
             var entityTable = GetEntityTable(entityType);
             
             if (HasOneToOneRelationship(type, entityType))
@@ -215,25 +257,6 @@ namespace ORM.Core.Models
         private static bool CalledByTable(Type entityType)
         {
             return EntityList.Any(t => t.Type == entityType);
-        }
-        
-        public IEnumerable<PropertyInfo> GetPropertiesOf(RelationshipType relationship)
-        {
-            var properties = Type.GetProperties();
-
-            foreach (var property in properties)
-            {
-                var underlyingType = property.PropertyType.GetUnderlyingType();
-                var field = ExternalFields.FirstOrDefault(f => 
-                    f.Table.Type == underlyingType && 
-                    f.Relationship == relationship
-                );
-
-                if (field is not null)
-                {
-                    yield return property;
-                }
-            }
         }
     }
 }

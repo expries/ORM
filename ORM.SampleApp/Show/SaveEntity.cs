@@ -17,19 +17,19 @@ namespace ORM.Application.Show
             var dbContext = Program.CreateDbContext();
             var book = new Book
             {
-                Author = new Author
+                Author = new Author 
                 {
-                    PersonId = 3,
+                    PersonId = 12,
                     Interest = 10,
                     Price = 100,
-                    FirstName = "Alex",
+                    FirstName = "Alex new",
                     LastName = "Test"   
                 },
                 Likes = 3,
                 Price = 300,
-                Title = "My book 3",
+                Title = "My book new",
                 Purchases = 30,
-                BookId = 3
+                BookId = 4
             };
             
             dbContext.Save(book);

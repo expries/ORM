@@ -24,6 +24,7 @@ namespace ORM.Core.Models
             AddColumns();
             AddForeignKeys();
             AddExternalFields();
+            Name = $"fk_{TableA.Name}_{TableB.Name}";
         }
 
         private void SetTables(EntityTable tableA, EntityTable tableB)

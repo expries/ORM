@@ -1,12 +1,17 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Data;
 using System.Linq;
 using System.Reflection;
+using System.Security.Cryptography;
+using Npgsql;
+using NuGet.Frameworks;
 using ORM.Core.Cache;
 using ORM.Core.Interfaces;
 using ORM.Core.Loading;
 using ORM.Core.Models;
+using ORM.Core.Models.Enums;
 using ORM.Core.Models.Extensions;
 
 namespace ORM.Core
@@ -38,8 +43,95 @@ namespace ORM.Core
 
         public void Save<T>(T entity)
         {
+            // insert/update entity
             var cmd = _commandBuilder.BuildSave(entity);
-            cmd.ExecuteNonQuery();
+            var pk = cmd.ExecuteScalar();
+
+            var entityType = entity.GetType();
+            var entityTable = entityType.ToTable();
+            var manyToMany = entityTable.GetPropertiesOf(RelationshipType.ManyToMany);
+            var oneToMany = entityTable.GetPropertiesOf(RelationshipType.OneToMany);
+
+            // update one to many references
+            foreach (var oneToManyProperty in oneToMany)
+            {
+                var collection = oneToManyProperty.GetValue(entity) as IEnumerable<object>;
+
+                foreach (var item in collection)
+                {
+                    var itemType = item.GetType();
+                    var navigatedProperty = itemType.GetNavigatedProperty(entityType);
+                    navigatedProperty.SetValue(item, entity);
+                    var itemTable = itemType.ToTable();
+                    var saveItem = _commandBuilder.BuildSave(item);
+                    object? itemPk = saveItem.ExecuteScalar();
+                    var pkProperty = itemTable.PrimaryKey.GetProperty(item);
+                    pkProperty.SetValue(item, itemPk);
+                }
+            }
+            
+            // update many to many references
+            foreach (var manyToManyProperty in manyToMany)
+            {
+                UpdateReference(entity, pk, manyToManyProperty);
+            }
+        }
+
+        private void UpdateReference<T>(T entity, object entityPk, PropertyInfo manyToManyProperty)
+        {
+            var entityTable = typeof(T).ToTable();
+            var externalType = manyToManyProperty.PropertyType.GetUnderlyingType();
+            var externalTable = externalType.ToTable();
+            
+            // get foreign key helper table
+            var fkTable = entityTable.ForeignKeyTables.First(x =>
+                x.TableA.Type == entityTable.Type &&
+                x.TableB.Type == externalTable.Type ||
+                x.TableA.Type == externalTable.Type &&
+                x.TableB.Type == entityTable.Type
+            );
+            
+            // get foreign key table columns
+            var fkEntity = fkTable.ForeignKeys
+                .First(fk => fk.TableTo.Name == entityTable.Name)
+                .ColumnFrom;
+            
+            var fkExternalEntity = fkTable.ForeignKeys
+                .First(fk => fk.TableTo.Name == externalTable.Name)
+                .ColumnFrom;
+            
+            // get the primary keys for the collection
+            var externalEntities = manyToManyProperty.GetValue(entity) as IEnumerable<dynamic>;
+            var externalPrimaryKeys = new List<object>();
+
+            foreach (var externalEntity in externalEntities)
+            {
+                var insertCmd = _commandBuilder.BuildSave(externalEntity);
+                var externalPk = insertCmd.ExecuteScalar();
+                externalPrimaryKeys.Add(externalPk);
+            }
+
+            var subCmd = _commandBuilder.Connection.CreateCommand();
+            subCmd.Parameters.AddWithValue("pk", entityPk);
+
+            subCmd.CommandText = $"INSERT INTO \"{fkTable.Name}\" (\"{fkEntity.Name}\", \"{fkExternalEntity.Name}\") " +
+                                 $"{Environment.NewLine}";
+
+            for (int i = 0; i < externalPrimaryKeys.Count; i++)
+            {
+                object fkPk = externalPrimaryKeys[i];
+                subCmd.CommandText += $"VALUES (@pk, @pkFk{i})";
+
+                if (i < externalPrimaryKeys.Count - 1)
+                {
+                    subCmd.CommandText += ",";
+                }
+
+                subCmd.CommandText += Environment.NewLine;
+                subCmd.Parameters.AddWithValue($"pkFk{i}", fkPk);
+            }
+            
+            subCmd.ExecuteNonQuery();
         }
 
         public IEnumerable<T> GetAll<T>()

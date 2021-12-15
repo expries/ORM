@@ -1,11 +1,14 @@
 using System.Collections.Generic;
 using System.Data;
+using Npgsql;
 using ORM.Core.Models;
 
 namespace ORM.Core.Interfaces
 {
     public interface ICommandBuilder
     {
+        public NpgsqlConnection Connection { get; }
+        
         public IDbCommand BuildEnsureCreated(List<Table> tables);
 
         public IDbCommand BuildGetAll<T>();

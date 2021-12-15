@@ -5,10 +5,25 @@ using ORM.Core.Models.Exceptions;
 
 namespace ORM.Core.Loading
 {
-    public class ProxyFactory
+    public static class ProxyFactory
     {
-        public static Type? CreateProxy(Type type)
+        /// <summary>
+        /// Creates a proxy of a type that overrides virtual properties with properties that use a
+        /// lazy backing field to get and set values
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <returns></returns>
+        public static T CreateProxy<T>()
         {
+            var proxyType = CreateProxyType<T>();
+            object? proxy = Activator.CreateInstance(proxyType);
+            return (T) proxy;
+        }
+        
+        private static Type CreateProxyType<T>()
+        {
+            var type = typeof(T);
+            
             if (type.IsSealed)
             {
                 throw new OrmException("Cannot create proxy for a class that is sealed");

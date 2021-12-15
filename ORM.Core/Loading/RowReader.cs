@@ -4,7 +4,6 @@ using System.Collections.Generic;
 using System.Data;
 using System.Linq;
 using System.Reflection;
-using System.Threading.Tasks.Dataflow;
 using ORM.Core.Interfaces;
 using ORM.Core.Models;
 using ORM.Core.Models.Enums;
@@ -54,8 +53,7 @@ namespace ORM.Core.Loading
             }
             else
             {
-                var proxyType = ProxyFactory.CreateProxy(typeof(T));
-                Current = (dynamic) Activator.CreateInstance(proxyType);
+                Current = ProxyFactory.CreateProxy<T>();
                 ReadExternalType();  
                 _cache.Save(Current);
             }
@@ -172,10 +170,6 @@ namespace ORM.Core.Loading
                 RelationshipType.ManyToMany => GetType().GetMethod(nameof(LoadManyToMany), BindingFlags.Instance | BindingFlags.NonPublic),
                 _ => throw new ObjectMappingException($"No relation found for property {property.Name} on type {typeof(T).Name}")
             };
-
-            Console.WriteLine(
-                $"Invoking {loadMethodInfo.Name} for {Current.GetType().Name} to " +
-                $"resolve {property.Name} ({property.PropertyType.FullName})");
             
             // build lazy loading method
             var loadMethod = loadMethodInfo.MakeGenericMethod(typeof(T), externalType);

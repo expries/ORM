@@ -34,6 +34,16 @@ namespace ORM.Core.Models.Extensions
             return navigatedProperty;
         }
 
+        public static bool IsProxy(this Type type)
+        {
+            return type.BaseType is not null && type.Name == $"Proxy{type.BaseType.Name}";
+        }
+
+        public static Type? GetProxiedType(this Type type)
+        {
+            return type.IsProxy() ? type.BaseType : null;
+        }
+
         public static Type? GetFirstGenericArgument(this Type type)
         {
             return !type.IsCollectionOfOneType() ? null : type.GetGenericArguments().First();
