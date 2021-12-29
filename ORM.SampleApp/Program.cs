@@ -58,9 +58,17 @@ namespace ORM.Application
             var ctx = CreateDbContext();
             ctx.EnsureCreated();
             //Show.SaveObject.ShowAuthor();
+            
+            
             Show.SaveObject.ShowAuthor();
+            Show.SaveObject.ShowBook();
+            Show.SaveObject.ShowSeller();
+            
             var books = ctx.GetAll<Book>().ToList();
             var authors = ctx.GetAll<Author>().ToList();
+            var sellers = ctx.GetAll<Seller>().ToList();
+            
+            
             //Show.SaveObject.ShowProduct();
             //var authors = ctx.GetAll<Author>().ToList();
             Console.WriteLine();

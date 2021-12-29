@@ -43,92 +43,105 @@ namespace ORM.Core
 
         public void Save<T>(T entity)
         {
-            // insert/update entity
-            var cmd = _commandBuilder.BuildSave(entity);
-            var pk = cmd.ExecuteScalar();
-
             var entityType = entity.GetType();
             var entityTable = entityType.ToTable();
-            var manyToMany = entityTable.GetPropertiesOf(RelationshipType.ManyToMany);
+
             var oneToMany = entityTable.GetPropertiesOf(RelationshipType.OneToMany);
+            var manyToMany = entityTable.GetPropertiesOf(RelationshipType.ManyToMany);
 
             // update one to many references
-            foreach (var oneToManyProperty in oneToMany)
+            foreach (var property in oneToMany)
             {
-                var collection = oneToManyProperty.GetValue(entity) as IEnumerable<object>;
+                var navigatedCollection = property.GetValue(entity) as IEnumerable<object> ?? new List<object>();
 
-                foreach (var item in collection)
+                foreach (var item in navigatedCollection)
                 {
                     var itemType = item.GetType();
                     var navigatedProperty = itemType.GetNavigatedProperty(entityType);
-                    navigatedProperty.SetValue(item, entity);
-                    var itemTable = itemType.ToTable();
-                    var saveItem = _commandBuilder.BuildSave(item);
-                    object? itemPk = saveItem.ExecuteScalar();
-                    var pkProperty = itemTable.PrimaryKey.GetProperty(item);
-                    pkProperty.SetValue(item, itemPk);
+                    navigatedProperty?.SetValue(item, entity);
                 }
             }
             
-            // update many to many references
-            foreach (var manyToManyProperty in manyToMany)
+            // save entity
+            var cmd = _commandBuilder.BuildSave(entity);
+            object? pk = cmd.ExecuteScalar();
+            entityTable.PrimaryKey.SetValue(entity, pk);
+
+            // save many to many references
+            foreach (var property in manyToMany)
             {
-                UpdateReference(entity, pk, manyToManyProperty);
+                var references = property.GetValue(entity) as IEnumerable<object> ?? new List<object>();
+                var referencePrimaryKeys = new List<object?>();
+                
+                foreach (var reference in references)
+                {
+                    // save reference
+                    var referencePk = SaveEntity(reference);
+                    referencePrimaryKeys.Add(referencePk);
+                }
+
+                var referenceType = property.PropertyType.GetUnderlyingType();
+                UpdateManyToManyTable(entityType, referenceType, pk, referencePrimaryKeys);
             }
         }
 
-        private void UpdateReference<T>(T entity, object entityPk, PropertyInfo manyToManyProperty)
+        private object SaveEntity<T>(T entity)
         {
-            var entityTable = typeof(T).ToTable();
-            var externalType = manyToManyProperty.PropertyType.GetUnderlyingType();
-            var externalTable = externalType.ToTable();
+            // save reference
+            var saveCmd = _commandBuilder.BuildSave(entity);
+            object? pk = saveCmd.ExecuteScalar();
+                    
+            // update primary key of reference
+            var type = entity.GetType();
+            var entityTable = type.ToTable();
+            entityTable.PrimaryKey.SetValue(entity, pk);
+            return pk;
+        } 
+
+        private void UpdateManyToManyTable(Type source, Type dest, object sourcePk, List<object?> destinationPks)
+        {
+            var sourceTable = source.ToTable();
+            var destTable = dest.ToTable();
             
+            // TODO: Move foreign key table detection to other class (maybe table?)
+
             // get foreign key helper table
-            var fkTable = entityTable.ForeignKeyTables.First(x =>
-                x.TableA.Type == entityTable.Type &&
-                x.TableB.Type == externalTable.Type ||
-                x.TableA.Type == externalTable.Type &&
-                x.TableB.Type == entityTable.Type
+            var fkTable = sourceTable.ForeignKeyTables.First(x =>
+                x.TableA.Type == sourceTable.Type &&
+                x.TableB.Type == destTable.Type ||
+                x.TableA.Type == destTable.Type &&
+                x.TableB.Type == sourceTable.Type
             );
             
             // get foreign key table columns
-            var fkEntity = fkTable.ForeignKeys
-                .First(fk => fk.TableTo.Name == entityTable.Name)
+            var sourceColumn = fkTable.ForeignKeys
+                .First(fk => fk.TableTo.Name == sourceTable.Name)
                 .ColumnFrom;
             
-            var fkExternalEntity = fkTable.ForeignKeys
-                .First(fk => fk.TableTo.Name == externalTable.Name)
+            var destColumn = fkTable.ForeignKeys
+                .First(fk => fk.TableTo.Name == destTable.Name)
                 .ColumnFrom;
             
-            // get the primary keys for the collection
-            var externalEntities = manyToManyProperty.GetValue(entity) as IEnumerable<dynamic>;
-            var externalPrimaryKeys = new List<object>();
-
-            foreach (var externalEntity in externalEntities)
-            {
-                var insertCmd = _commandBuilder.BuildSave(externalEntity);
-                var externalPk = insertCmd.ExecuteScalar();
-                externalPrimaryKeys.Add(externalPk);
-            }
+            // TODO: Delete prior entries in table
 
             var subCmd = _commandBuilder.Connection.CreateCommand();
-            subCmd.Parameters.AddWithValue("pk", entityPk);
+            subCmd.Parameters.AddWithValue("pk", sourcePk);
 
-            subCmd.CommandText = $"INSERT INTO \"{fkTable.Name}\" (\"{fkEntity.Name}\", \"{fkExternalEntity.Name}\") " +
+            subCmd.CommandText = $"INSERT INTO \"{fkTable.Name}\" (\"{sourceColumn.Name}\", \"{destColumn.Name}\") " +
                                  $"{Environment.NewLine}";
 
-            for (int i = 0; i < externalPrimaryKeys.Count; i++)
+            for (int i = 0; i < destinationPks.Count; i++)
             {
-                object fkPk = externalPrimaryKeys[i];
-                subCmd.CommandText += $"VALUES (@pk, @pkFk{i})";
+                object destinationPk = destinationPks[i];
+                subCmd.CommandText += $"VALUES (@pk, @pkDest{i})";
 
-                if (i < externalPrimaryKeys.Count - 1)
+                if (i < destinationPks.Count - 1)
                 {
                     subCmd.CommandText += ",";
                 }
 
                 subCmd.CommandText += Environment.NewLine;
-                subCmd.Parameters.AddWithValue($"pkFk{i}", fkPk);
+                subCmd.Parameters.AddWithValue($"pkDest{i}", destinationPk);
             }
             
             subCmd.ExecuteNonQuery();

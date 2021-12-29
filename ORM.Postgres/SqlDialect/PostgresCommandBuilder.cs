@@ -237,11 +237,7 @@ namespace ORM.Postgres.SqlDialect
             var navigatedType = value.GetType();
             var navigatedEntityType = navigatedType.ToTable();
             var pkColumn = navigatedEntityType.PrimaryKey;
-            var saveCommand = BuildSave(value);
-            object? primaryKey = saveCommand.ExecuteScalar();
-            var pkProperty = pkColumn.GetProperty(value);
-            pkProperty.SetValue(value, primaryKey);
-            return primaryKey;
+            return pkColumn.GetValue(value);
         }
 
         public IDbCommand BuildSave<T>(T entity)

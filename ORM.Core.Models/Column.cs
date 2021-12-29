@@ -51,11 +51,10 @@ namespace ORM.Core.Models
             return value;
         }
 
-        public PropertyInfo GetProperty<T>(T entity)
+        public void SetValue<T>(T entity, object value)
         {
-            var properties = entity.GetType().GetProperties();
-            var property = properties.FirstOrDefault(p => new Column(p).Name == Name);
-            return property;
+            var property = GetProperty(entity);
+            property?.SetValue(entity, value);
         }
 
         private void ReadAttributes(PropertyInfo property)
@@ -104,6 +103,13 @@ namespace ORM.Core.Models
             {
                 MinLength = minLengthAttribute.Length;
             }
+        }
+        
+        private PropertyInfo? GetProperty<T>(T entity)
+        {
+            var properties = entity?.GetType().GetProperties();
+            var property = properties?.FirstOrDefault(p => new Column(p).Name == Name);
+            return property;
         }
     }
 }

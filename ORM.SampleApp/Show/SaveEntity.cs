@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using ORM.Application.Entities;
 
 namespace ORM.Application.Show
@@ -32,6 +33,7 @@ namespace ORM.Application.Show
                 BookId = 4
             };
             
+            dbContext.Save(book.Author);
             dbContext.Save(book);
         }
 
@@ -42,7 +44,17 @@ namespace ORM.Application.Show
             {
                 Name = "Seller #1", 
                 Id = 1, 
-                Products = new List<Product>()
+                Products = new List<Product>
+                {
+                    new Product
+                    {
+                        Likes = 10,
+                        Name = "Product A",
+                        Price = 20,
+                        Purchases = 0,
+                        InsertedInStore = DateTime.Now
+                    }
+                }
             };
             dbContext.Save(seller);
         }
@@ -78,6 +90,7 @@ namespace ORM.Application.Show
                 }
             };
             dbContext.Save(author);
+            author.Books.ForEach(b => dbContext.Save(b));
         }
     }
 }
