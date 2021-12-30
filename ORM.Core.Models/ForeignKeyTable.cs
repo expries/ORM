@@ -1,3 +1,4 @@
+using System;
 using System.Linq;
 using ORM.Core.Models.Enums;
 
@@ -25,6 +26,11 @@ namespace ORM.Core.Models
             AddForeignKeys();
             AddExternalFields();
             Name = $"fk_{TableA.Name}_{TableB.Name}";
+        }
+
+        public bool MapsTypes(Type a, Type b)
+        {
+            return TableA.Type == a && TableB.Type == b || TableA.Type == b && TableB.Type == a;
         }
 
         private void SetTables(EntityTable tableA, EntityTable tableB)

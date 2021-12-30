@@ -1,12 +1,8 @@
 using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Data;
 using System.Linq;
 using System.Reflection;
-using System.Security.Cryptography;
-using Npgsql;
-using NuGet.Frameworks;
 using ORM.Core.Cache;
 using ORM.Core.Interfaces;
 using ORM.Core.Loading;
@@ -102,17 +98,10 @@ namespace ORM.Core
         {
             var sourceTable = source.ToTable();
             var destTable = dest.ToTable();
-            
-            // TODO: Move foreign key table detection to other class (maybe table?)
 
             // get foreign key helper table
-            var fkTable = sourceTable.ForeignKeyTables.First(x =>
-                x.TableA.Type == sourceTable.Type &&
-                x.TableB.Type == destTable.Type ||
-                x.TableA.Type == destTable.Type &&
-                x.TableB.Type == sourceTable.Type
-            );
-            
+            var fkTable = sourceTable.ForeignKeyTables.First(x => x.MapsTypes(sourceTable.Type, destTable.Type));
+
             // get foreign key table columns
             var sourceColumn = fkTable.ForeignKeys
                 .First(fk => fk.TableTo.Name == sourceTable.Name)
@@ -122,7 +111,13 @@ namespace ORM.Core
                 .First(fk => fk.TableTo.Name == destTable.Name)
                 .ColumnFrom;
             
-            // TODO: Delete prior entries in table
+            var dropCmd = _commandBuilder.Connection.CreateCommand();
+            dropCmd.Parameters.AddWithValue("pk", sourcePk);
+
+            dropCmd.CommandText = $"DELETE FROM \"{fkTable.Name}\" WHERE \"{sourceColumn.Name}\" = @pk" +
+                                  $"{Environment.NewLine}";
+            
+            dropCmd.ExecuteNonQuery();
 
             var subCmd = _commandBuilder.Connection.CreateCommand();
             subCmd.Parameters.AddWithValue("pk", sourcePk);

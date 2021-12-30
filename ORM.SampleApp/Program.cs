@@ -56,7 +56,7 @@ namespace ORM.Application
             var ef =  new Lazy<Author>(() => result);
 
             var ctx = CreateDbContext();
-            ctx.EnsureCreated();
+            //ctx.EnsureCreated();
             //Show.SaveObject.ShowAuthor();
             
             
