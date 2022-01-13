@@ -12,27 +12,48 @@ using ORM.Core.Models.Extensions;
 
 namespace ORM.Core.Loading
 {
+    /// <summary>
+    /// Maps result rows from a data reader into objects of type T
+    /// </summary>
+    /// <typeparam name="T"></typeparam>
     internal class RowReader<T> : IEnumerator<T>
     {
+        /// <summary>
+        /// A data reader for reading result rows
+        /// </summary>
         private readonly IDataReader _reader;
         
+        /// <summary>
+        /// A loader to fetch entity relationships when encountered
+        /// </summary>
         private readonly ILazyLoader _lazyLoader;
 
-        private readonly ICache _cache;
-
+        /// <summary>
+        /// The schema for the current row
+        /// </summary>
         private Dictionary<int, string>? _schema;
 
+        /// <summary>
+        /// The mapped object
+        /// </summary>
         public T Current { get; private set; }
 
+        /// <summary>
+        /// Enumerator for the mapped object
+        /// </summary>
         object? IEnumerator.Current => Current;
         
-        public RowReader(IDataReader reader, ILazyLoader lazyLoader, ICache cache)
+        public RowReader(IDataReader reader, ILazyLoader lazyLoader)
         {
             _reader = reader;
             _lazyLoader = lazyLoader;
-            _cache = cache;
         }
         
+        /// <summary>
+        /// Read the next row.
+        /// Returns true if a row was read successfully or false if no row is left.
+        /// </summary>
+        /// <returns></returns>
         public bool MoveNext()
         {
             bool recordWasFound = _reader.Read();
@@ -42,34 +63,48 @@ namespace ORM.Core.Loading
                 return false;
             }
 
+            // Read the schema once
             if (_schema is null)
             {
                 ReadColumnSchema();
             }
 
+            // Read internal type (e.g. primitive types)
             if (typeof(T).IsInternalType())
             {
                 ReadInternalType();
             }
+            // Read entities
             else
             {
-                Current = ProxyFactory.CreateProxy<T>();
-                ReadExternalType();  
-                _cache.Save(Current);
+                // Create a lazy proxy for lazy-loading relationship properties
+                Current = LazyProxyFactory.CreateProxy<T>();
+                // Fill the object with data
+                ReadExternalType();
             }
 
             return true;
         }
 
+        /// <summary>
+        /// Used for resetting the enumerator.
+        /// As the enumerator may only be consumed once, this function needs no implementation.
+        /// </summary>
         public void Reset()
         {
         }
 
+        /// <summary>
+        /// Disposing the enumerator
+        /// </summary>
         public void Dispose()
         {
             _reader.Dispose();
         }
 
+        /// <summary>
+        /// Read the schema for the current row
+        /// </summary>
         private void ReadColumnSchema()
         {
             _schema = new Dictionary<int, string>();
@@ -82,6 +117,10 @@ namespace ORM.Core.Loading
             }
         }
 
+        /// <summary>
+        /// Reads an internal type
+        /// </summary>
+        /// <exception cref="ObjectMappingException"></exception>
         private void ReadInternalType()
         {
             if (_schema.Count < 1)
@@ -101,6 +140,9 @@ namespace ORM.Core.Loading
             Current = (T) value;
         }
 
+        /// <summary>
+        /// Reads an external type (e.g. an entity)
+        /// </summary>
         private void ReadExternalType()
         {
             var properties = typeof(T).GetProperties();
@@ -127,6 +169,10 @@ namespace ORM.Core.Loading
             }
         }
         
+        /// <summary>
+        /// Sets an internal property on the current object
+        /// </summary>
+        /// <param name="property"></param>
         private void SetInternalProperty(PropertyInfo property)
         {
             // check if column is in result schema
@@ -156,6 +202,12 @@ namespace ORM.Core.Loading
             property.SetValue(Current, value);
         }
 
+        /// <summary>
+        /// Sets an external property on the current object
+        /// </summary>
+        /// <param name="property"></param>
+        /// <param name="externalType"></param>
+        /// <exception cref="ObjectMappingException"></exception>
         private void SetExternalProperty(PropertyInfo property, Type externalType)
         {
             var table = typeof(T).ToTable();
@@ -179,21 +231,41 @@ namespace ORM.Core.Loading
             var fields = Current.GetType().GetFields(BindingFlags.Instance | BindingFlags.NonPublic);
             var backingField = fields.FirstOrDefault(f => f.Name == $"_lazy{property.Name}");
             backingField?.SetValue(Current, lazyResult);
-            Console.WriteLine();
         }
 
+        /// <summary>
+        /// Returns a lazy list that executes the loader when fetching its value
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <typeparam name="TOne"></typeparam>
+        /// <typeparam name="TMany"></typeparam>
+        /// <returns></returns>
         private Lazy<List<TMany>> LoadOneToMany<TOne, TMany>(TOne entity)
         {
             List<TMany> Loading() => _lazyLoader.LoadOneToMany<TOne, TMany>(entity);
             return new Lazy<List<TMany>>(Loading);
         }
 
+        /// <summary>
+        /// Returns a lazy object that executes the loader when fetching its value
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <typeparam name="TMany"></typeparam>
+        /// <typeparam name="TOne"></typeparam>
+        /// <returns></returns>
         private Lazy<TOne> LoadManyToOne<TMany, TOne>(TMany entity)
         {
             TOne Loading() => _lazyLoader.LoadManyToOne<TMany, TOne>(entity);
             return new Lazy<TOne>(Loading);
         }
         
+        /// <summary>
+        /// Returns an lazy list that executes the loader when fetching its value
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <typeparam name="TManyA"></typeparam>
+        /// <typeparam name="TManyB"></typeparam>
+        /// <returns></returns>
         private Lazy<List<TManyB>> LoadManyToMany<TManyA, TManyB>(TManyA entity)
         {
             List<TManyB> Loading() => _lazyLoader.LoadManyToMany<TManyA, TManyB>(entity);

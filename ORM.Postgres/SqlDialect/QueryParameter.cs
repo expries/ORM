@@ -1,37 +1,27 @@
-﻿namespace ORM.Postgres.SqlDialect
+﻿using System;
+using ORM.Core.Models;
+
+namespace ORM.Postgres.SqlDialect
 {
+    /// <summary>
+    /// Represents a parameter used in a command
+    /// </summary>
     public class QueryParameter
     {
-        public string Column { get; set; }
+        /// <summary>
+        /// Name of the parameter
+        /// </summary>
+        public string Name { get; }
         
-        public string Name { get; set; }
-        
-        public object Value { get; set; }
+        /// <summary>
+        /// Value of the parameter
+        /// </summary>
+        public object Value { get; }
 
-        public bool IsParameterized { get; set; }
-        
-        public QueryParameter(string column, string name, object value)
+        public QueryParameter(string name, object? value)
         {
-            Column = column;
             Name = name;
-            Value = value;
-            IsParameterized = true;
-        }
-
-        public QueryParameter(string name, object value)
-        {
-            Column = string.Empty;
-            Name = name;
-            Value = value;
-            IsParameterized = true;    
-        }
-
-        public QueryParameter(string column, string sql)
-        {
-            Column = column;
-            Name = string.Empty;
-            Value = sql;
-            IsParameterized = false;
+            Value = value ?? DBNull.Value;
         }
     }
 }

@@ -17,7 +17,7 @@ namespace ORM.Postgres.Linq.ExpressionNodeSqlTranslators
             if (node.Value is IQueryable queryable)
             {
                 var table = queryable.ElementType.ToTable();
-                string columnsSelection = GetUnescapedColumnsString(table);
+                string columnsSelection = GetEscapedColumnsString(table);
                 Append($"SELECT {columnsSelection} FROM \"{table.Name}\"");
                 return;
             }

@@ -8,7 +8,7 @@ namespace ORM.Application.Show
     {
         public static void ShowToList()
         {
-            var dbSet = Program.CreateDbSet<Product>();
+            var dbSet = DbFactory.CreateDbSet<Product>();
             var products = dbSet.ToList();
             
             Console.WriteLine($"Found {products.Count} products:");

@@ -5,11 +5,14 @@ using ORM.Core.Models.Exceptions;
 
 namespace ORM.Core.Loading
 {
-    public static class ProxyFactory
+    /// <summary>
+    /// Constructs lazy proxy types
+    /// </summary>
+    public static class LazyProxyFactory
     {
         /// <summary>
-        /// Creates a proxy of a type that overrides virtual properties with properties that use a
-        /// lazy backing field to get and set values
+        /// Creates a lazy proxy for type T. The proxy overrides all virtual properties and inserts lazy backing fields
+        /// to be used instead of the original getters and setters.
         /// </summary>
         /// <typeparam name="T"></typeparam>
         /// <returns></returns>
@@ -17,9 +20,21 @@ namespace ORM.Core.Loading
         {
             var proxyType = CreateProxyType<T>();
             object? proxy = Activator.CreateInstance(proxyType);
+
+            if (proxy is null)
+            {
+                throw new OrmException($"Failed to create instance for proxy type {proxyType.Name}");
+            }
+            
             return (T) proxy;
         }
         
+        /// <summary>
+        /// Creates a proxy type for type T. The proxy type inherits from T
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <returns></returns>
+        /// <exception cref="OrmException"></exception>
         private static Type CreateProxyType<T>()
         {
             var type = typeof(T);
@@ -47,9 +62,23 @@ namespace ORM.Core.Loading
                 }
             }
             
-            return typeBuilder.CreateType();
+            var proxyType = typeBuilder.CreateType();
+
+            if (proxyType is null)
+            {
+                throw new OrmException($"Failed to create lazy proxy type for type {typeof(T).Name}");
+            }
+            
+            return proxyType;
         }
 
+        /// <summary>
+        /// Create a proxy property that overrides the given property.
+        /// The proxy property uses lazy backing field instead of the build in getters and setters.
+        /// </summary>
+        /// <param name="typeBuilder"></param>
+        /// <param name="property"></param>
+        /// <exception cref="OrmException"></exception>
         private static void CreateProxyProperty(TypeBuilder typeBuilder, PropertyInfo property)
         {
             // Override property

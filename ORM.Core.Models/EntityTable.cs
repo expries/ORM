@@ -8,10 +8,24 @@ using ORM.Core.Models.Extensions;
 
 namespace ORM.Core.Models
 {
+    /// <summary>
+    /// Represents a table that holds information that is mapped to an entity
+    /// </summary>
     public class EntityTable : Table
     {
+        /// <summary>
+        /// The type of entity stored in the table
+        /// </summary>
         public Type Type { get; }
+        
+        /// <summary>
+        /// Primary key column of the table
+        /// </summary>
+        public Column PrimaryKey { get; protected set; }
 
+        /// <summary>
+        /// List of looked up entities, used to avoid recursions when looking up relationships to other entities
+        /// </summary>
         private static readonly List<EntityTable> EntityList = new List<EntityTable>();
 
         /// <summary>
@@ -41,7 +55,7 @@ namespace ORM.Core.Models
             var properties = Type.GetProperties();
             return properties.FirstOrDefault(p => new Column(p).Name == column.Name);
         }
-        
+
         /// <summary>
         /// Get the properties that form a given relationship with the entity type 
         /// </summary>
@@ -66,7 +80,11 @@ namespace ORM.Core.Models
             }
         }
 
-        // Build table based on given entity type
+        /// <summary>
+        /// Set table data based on given entity type
+        /// </summary>
+        /// <param name="entityType"></param>
+        /// <exception cref="InvalidEntityException"></exception>
         private void ReadType(Type entityType)
         {
             if (entityType.IsInternalType())
@@ -104,7 +122,10 @@ namespace ORM.Core.Models
             }
         }
 
-        // process a property that is an entity itself
+        /// <summary>
+        /// Process property that is an entity itself
+        /// </summary>
+        /// <param name="property"></param>
         private void ReadExternalField(PropertyInfo property)
         {
             // generate the entity's table
@@ -132,28 +153,40 @@ namespace ORM.Core.Models
                 AddManyToMany(entityTable);
             }
         }
-
-        // Add one-to-one relationship to other table 
+        
+        /// <summary>
+        /// Add one-to-one relationship to other table
+        /// </summary>
+        /// <param name="other"></param>
         private void AddOneToOne(EntityTable other)
         {
             AddForeignKey(other, true);
             AddExternalField(other, RelationshipType.OneToOne);
         }
 
-        // Add one-to-many relationship to other table
+        /// <summary>
+        /// Add one-to-many relationship to other table
+        /// </summary>
+        /// <param name="other"></param>
         private void AddOneToMany(EntityTable other)
         {
             AddExternalField(other, RelationshipType.OneToMany);
         }
         
-        // Add many-to-one relationship to other table
+        /// <summary>
+        /// Add many-to-one relationship to other table
+        /// </summary>
+        /// <param name="other"></param>
         private void AddManyToOne(EntityTable other)
         {
             AddForeignKey(other, false);
             AddExternalField(other, RelationshipType.ManyToOne);
         }
         
-        // Add many-to-many relationship to other table
+        /// <summary>
+        /// Add many-to-many relationship to other table
+        /// </summary>
+        /// <param name="other"></param>
         private void AddManyToMany(EntityTable other)
         {
             AddForeignKeyTable(other);
@@ -161,13 +194,23 @@ namespace ORM.Core.Models
             other.AddExternalField(this, RelationshipType.ManyToMany);
         }
 
-        // Add helper table to represent many-to-many relationship to other table
+        /// <summary>
+        /// Add helper table to represent many-to-many relationship to other table
+        /// </summary>
+        /// <param name="other"></param>
         private void AddForeignKeyTable(EntityTable other)
         {
             var fkTable = new ForeignKeyTable(this, other);
             ForeignKeyTables.Add(fkTable);
         }
 
+        /// <summary>
+        /// Check if the relationship between two types is one-to-one
+        /// </summary>
+        /// <param name="propertyType"></param>
+        /// <param name="entityType"></param>
+        /// <returns></returns>
+        /// <exception cref="InvalidEntityException"></exception>
         private bool HasOneToOneRelationship(Type propertyType, Type entityType)
         {
             if (propertyType.IsCollectionOfOneType())
@@ -186,6 +229,13 @@ namespace ORM.Core.Models
             return !navigatedProperty.PropertyType.IsCollectionOfOneType();
         }
 
+        /// <summary>
+        /// Check if the relationship between two types is one-to-many
+        /// </summary>
+        /// <param name="propertyType"></param>
+        /// <param name="entityType"></param>
+        /// <returns></returns>
+        /// <exception cref="InvalidEntityException"></exception>
         private bool HasOneToManyRelationship(Type propertyType, Type entityType)
         {
             if (!propertyType.IsCollectionOfOneType())
@@ -204,6 +254,13 @@ namespace ORM.Core.Models
             return !navigatedProperty.PropertyType.IsCollectionOfOneType();
         }
         
+        /// <summary>
+        /// Check if the relationship between two types is many-to-one
+        /// </summary>
+        /// <param name="propertyType"></param>
+        /// <param name="entityType"></param>
+        /// <returns></returns>
+        /// <exception cref="InvalidEntityException"></exception>
         private bool HasManyToOneRelationship(Type propertyType, Type entityType)
         {
             if (propertyType.IsCollectionOfOneType())
@@ -222,6 +279,13 @@ namespace ORM.Core.Models
             return navigatedProperty.PropertyType.IsCollectionOfOneType();
         }
 
+        /// <summary>
+        /// Check if the relationship between two types is many-to-many
+        /// </summary>
+        /// <param name="propertyType"></param>
+        /// <param name="entityType"></param>
+        /// <returns></returns>
+        /// <exception cref="InvalidEntityException"></exception>
         private bool HasManyToManyRelationship(Type propertyType, Type entityType)
         {
             if (!propertyType.IsCollectionOfOneType())
@@ -240,6 +304,11 @@ namespace ORM.Core.Models
             return navigatedProperty.PropertyType.IsCollectionOfOneType();
         }
         
+        /// <summary>
+        /// Lookup or create an entity table model for a given type
+        /// </summary>
+        /// <param name="entityType"></param>
+        /// <returns></returns>
         private EntityTable GetEntityTable(Type entityType)
         {
             var table = EntityList.FirstOrDefault(t => t.Type == entityType);
@@ -254,6 +323,11 @@ namespace ORM.Core.Models
             return table;
         }
 
+        /// <summary>
+        /// Check if the entity that is looked for, initiated the creation of the current instance of entity table 
+        /// </summary>
+        /// <param name="entityType"></param>
+        /// <returns></returns>
         private static bool CalledByTable(Type entityType)
         {
             return EntityList.Any(t => t.Type == entityType);

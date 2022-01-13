@@ -1,26 +1,35 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using ORM.Application.Entities;
+using ORM.Core;
 
 namespace ORM.Application.Show
 {
     public static class SaveObject
     {
-        public static void ShowProduct()
-        {
-            var dbContext = Program.CreateDbContext();
-            var product = new Product { Name = "my favourite book", Price = 10, Purchases = 5 };
-            dbContext.Save(product);
-        }
+        private static DbContext DbContext = DbFactory.CreateDbContext();
         
-        public static void ShowBook()
+        public static void ShowBasic()
         {
-            var dbContext = Program.CreateDbContext();
+            var product = new Product
+            {
+                ProductId = 1,
+                Name = "my favourite book", 
+                Price = 10, 
+                Purchases = 5,
+                Likes = 100,
+            };
+            
+            DbContext.Save(product);
+        }
+
+        public static void ShowWithManyToOne()
+        {
             var book = new Book
             {
+                BookId = 1,
                 Author = new Author 
                 {
-                    PersonId = 12,
+                    PersonId = 10,
                     Interest = 10,
                     Price = 100,
                     FirstName = "Alex new",
@@ -30,38 +39,14 @@ namespace ORM.Application.Show
                 Price = 300,
                 Title = "My book new",
                 Purchases = 30,
-                BookId = 4
             };
             
-            dbContext.Save(book.Author);
-            dbContext.Save(book);
+            DbContext.Save(book.Author);
+            DbContext.Save(book);
         }
 
-        public static void ShowSeller()
+        public static void ShowWithOneToMany()
         {
-            var dbContext = Program.CreateDbContext();
-            var seller = new Seller
-            {
-                Name = "Seller #1", 
-                Id = 1, 
-                Products = new List<Product>
-                {
-                    new Product
-                    {
-                        Likes = 10,
-                        Name = "Product A",
-                        Price = 20,
-                        Purchases = 0,
-                        InsertedInStore = DateTime.Now
-                    }
-                }
-            };
-            dbContext.Save(seller);
-        }
-
-        public static void ShowAuthor()
-        {
-            var dbContext = Program.CreateDbContext();
             var author = new Author
             {
                 PersonId = 1,
@@ -77,7 +62,7 @@ namespace ORM.Application.Show
                          Price = 100,
                          Title = "My book",
                          Purchases = 10,
-                         BookId = 1
+                         BookId = 10
                      },
                      new Book
                      {
@@ -85,12 +70,41 @@ namespace ORM.Application.Show
                          Price = 200,
                          Title = "My book 2",
                          Purchases = 20,
-                         BookId = 2
+                         BookId = 11
                      }
                 }
             };
-            dbContext.Save(author);
-            author.Books.ForEach(b => dbContext.Save(b));
+            
+            DbContext.Save(author);
+            author.Books.ForEach(b => DbContext.Save(b));
+        }
+
+        public static void ShowWithManyToMany()
+        {
+            var product = new Product
+            {
+                Name = "my favourite book", 
+                Price = 10, 
+                Purchases = 5,
+                Likes = 100,
+                ProductId = 1,
+                Sellers =  new List<Seller>
+                {
+                    new Seller
+                    {
+                        Id = 12,
+                        Name = "Seller for book"
+                    },
+                    new Seller
+                    {
+                        Id = 13,
+                        Name = "Seller for book"
+                    }
+                }
+            };
+
+            product.Sellers.ForEach(x => DbContext.Save(x));
+            DbContext.Save(product);
         }
     }
 }

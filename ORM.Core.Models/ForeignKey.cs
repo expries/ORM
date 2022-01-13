@@ -1,18 +1,30 @@
 namespace ORM.Core.Models
 {
+    /// <summary>
+    /// Represents a foreign key of a table
+    /// </summary>
     public class ForeignKey
     {
-        public Column ColumnFrom { get; }
+        /// <summary>
+        /// Column of the current table that the constraint is applied on
+        /// </summary>
+        public Column LocalColumn { get; }
         
-        public Column ColumnTo { get; }
+        /// <summary>
+        /// Column of another table that the constraint is pointing towards 
+        /// </summary>
+        public Column RemoteColumn { get; }
 
-        public Table TableTo { get; }
+        /// <summary>
+        /// Table that contains the remote column
+        /// </summary>
+        public EntityTable RemoteTable { get; }
         
-        public ForeignKey(Column columnFrom, Column columnTo, Table tableTo)
+        public ForeignKey(Column localColumn, Column remoteColumn, EntityTable remoteTable)
         {
-            ColumnFrom = columnFrom;
-            ColumnTo = columnTo;
-            TableTo = tableTo;
+            LocalColumn = localColumn;
+            RemoteColumn = remoteColumn;
+            RemoteTable = remoteTable;
         }
     }
 }

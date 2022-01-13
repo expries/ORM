@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Data;
 using System.Linq;
 using System.Reflection;
-using ORM.Core.Cache;
+using ORM.Core.Caching;
 using ORM.Core.Interfaces;
 using ORM.Core.Loading;
 using ORM.Core.Models;
@@ -12,10 +12,19 @@ using ORM.Core.Models.Extensions;
 
 namespace ORM.Core
 {
+    /// <summary>
+    /// Database context for performing methods in the current database context
+    /// </summary>
     public class DbContext : IDbContext
     {
+        /// <summary>
+        /// Builds commands to be executed
+        /// </summary>
         private readonly ICommandBuilder _commandBuilder;
 
+        /// <summary>
+        /// Caches entities
+        /// </summary>
         private readonly ICache _cache;
 
         public DbContext(ICommandBuilder dialect, ICache cache)
@@ -28,7 +37,11 @@ namespace ORM.Core
             : this(dialect, new EntityCache())
         {
         }
-
+        
+        /// <summary>
+        /// Creates the database schema
+        /// </summary>
+        /// <param name="assembly"></param>
         public void EnsureCreated(Assembly? assembly = null)
         {
             assembly ??= Assembly.GetCallingAssembly();
@@ -36,17 +49,60 @@ namespace ORM.Core
             var cmd = _commandBuilder.BuildEnsureCreated(tables);
             cmd.ExecuteNonQuery();
         }
-
+        
+        /// <summary>
+        /// Saves an entity
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <typeparam name="T"></typeparam>
         public void Save<T>(T entity)
+        {
+            // Do nothing if cached entity did not changed
+            if (!_cache.HasChanged(entity))
+            {
+                return;
+            }
+
+            // Update references on object
+            UpdateReferences(entity);
+
+            // Save entity
+            SaveEntity(entity);
+            
+            // Save many to many references
+            SaveReferences(entity);
+        }
+        
+        /// <summary>
+        /// Saves an entity as-is and updates its primary key
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <typeparam name="T"></typeparam>
+        /// <returns></returns>
+        private object SaveEntity<T>(T entity)
+        {
+            // Save entity
+            var saveCmd = _commandBuilder.BuildSave(entity);
+            object? pk = saveCmd.ExecuteScalar();
+                    
+            // Update primary key on entity
+            var type = entity.GetType();
+            var entityTable = type.ToTable();
+            entityTable.PrimaryKey.SetValue(entity, pk);
+            return pk;
+        }
+
+        /// <summary>
+        /// Updates references of an entity
+        /// </summary>
+        /// <param name="entity"></param>
+        private static void UpdateReferences(object entity)
         {
             var entityType = entity.GetType();
             var entityTable = entityType.ToTable();
-
-            var oneToMany = entityTable.GetPropertiesOf(RelationshipType.OneToMany);
-            var manyToMany = entityTable.GetPropertiesOf(RelationshipType.ManyToMany);
-
-            // update one to many references
-            foreach (var property in oneToMany)
+            var references = entityTable.GetPropertiesOf(RelationshipType.OneToMany);
+            
+            foreach (var property in references)
             {
                 var navigatedCollection = property.GetValue(entity) as IEnumerable<object> ?? new List<object>();
 
@@ -57,91 +113,43 @@ namespace ORM.Core
                     navigatedProperty?.SetValue(item, entity);
                 }
             }
-            
-            // save entity
-            var cmd = _commandBuilder.BuildSave(entity);
-            object? pk = cmd.ExecuteScalar();
-            entityTable.PrimaryKey.SetValue(entity, pk);
+        }
 
+        /// <summary>
+        /// Saves the references of an entity in the database
+        /// </summary>
+        /// <param name="entity"></param>
+        private void SaveReferences(object entity)
+        {
+            var entityType = entity.GetType();
+            var entityTable = entityType.ToTable();
+            var references = entityTable.GetPropertiesOf(RelationshipType.ManyToMany);
+            
             // save many to many references
-            foreach (var property in manyToMany)
+            foreach (var property in references)
             {
-                var references = property.GetValue(entity) as IEnumerable<object> ?? new List<object>();
-                var referencePrimaryKeys = new List<object?>();
+                var entries = property.GetValue(entity) as IEnumerable<object> ?? new List<object>();
+                entries = entries.ToList();
                 
-                foreach (var reference in references)
-                {
-                    // save reference
-                    var referencePk = SaveEntity(reference);
-                    referencePrimaryKeys.Add(referencePk);
-                }
-
+                var referencesPrimaryKeys = entries.Select(SaveEntity).ToList();
                 var referenceType = property.PropertyType.GetUnderlyingType();
-                UpdateManyToManyTable(entityType, referenceType, pk, referencePrimaryKeys);
-            }
-        }
+                
+                var removeCmd = _commandBuilder.BuildRemoveManyToManyReferences(entity, referenceType);
+                removeCmd.ExecuteNonQuery();
 
-        private object SaveEntity<T>(T entity)
-        {
-            // save reference
-            var saveCmd = _commandBuilder.BuildSave(entity);
-            object? pk = saveCmd.ExecuteScalar();
-                    
-            // update primary key of reference
-            var type = entity.GetType();
-            var entityTable = type.ToTable();
-            entityTable.PrimaryKey.SetValue(entity, pk);
-            return pk;
-        } 
-
-        private void UpdateManyToManyTable(Type source, Type dest, object sourcePk, List<object?> destinationPks)
-        {
-            var sourceTable = source.ToTable();
-            var destTable = dest.ToTable();
-
-            // get foreign key helper table
-            var fkTable = sourceTable.ForeignKeyTables.First(x => x.MapsTypes(sourceTable.Type, destTable.Type));
-
-            // get foreign key table columns
-            var sourceColumn = fkTable.ForeignKeys
-                .First(fk => fk.TableTo.Name == sourceTable.Name)
-                .ColumnFrom;
-            
-            var destColumn = fkTable.ForeignKeys
-                .First(fk => fk.TableTo.Name == destTable.Name)
-                .ColumnFrom;
-            
-            var dropCmd = _commandBuilder.Connection.CreateCommand();
-            dropCmd.Parameters.AddWithValue("pk", sourcePk);
-
-            dropCmd.CommandText = $"DELETE FROM \"{fkTable.Name}\" WHERE \"{sourceColumn.Name}\" = @pk" +
-                                  $"{Environment.NewLine}";
-            
-            dropCmd.ExecuteNonQuery();
-
-            var subCmd = _commandBuilder.Connection.CreateCommand();
-            subCmd.Parameters.AddWithValue("pk", sourcePk);
-
-            subCmd.CommandText = $"INSERT INTO \"{fkTable.Name}\" (\"{sourceColumn.Name}\", \"{destColumn.Name}\") " +
-                                 $"{Environment.NewLine}";
-
-            for (int i = 0; i < destinationPks.Count; i++)
-            {
-                object destinationPk = destinationPks[i];
-                subCmd.CommandText += $"VALUES (@pk, @pkDest{i})";
-
-                if (i < destinationPks.Count - 1)
+                if (entries.ToList().Count > 0)
                 {
-                    subCmd.CommandText += ",";
+                    var addCmd = _commandBuilder.BuildSaveManyToManyReferences(entity, referenceType, referencesPrimaryKeys);
+                    addCmd.ExecuteNonQuery();
                 }
-
-                subCmd.CommandText += Environment.NewLine;
-                subCmd.Parameters.AddWithValue($"pkDest{i}", destinationPk);
             }
-            
-            subCmd.ExecuteNonQuery();
         }
 
+        /// <summary>
+        /// Get all entities of a given type
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <returns></returns>
         public IEnumerable<T> GetAll<T>()
         {
             var cmd = _commandBuilder.BuildGetAll<T>();
@@ -149,6 +157,12 @@ namespace ORM.Core
             return CreateObjectReader<T>(reader);
         }
 
+        /// <summary>
+        /// Get an entity by its primary key
+        /// </summary>
+        /// <param name="pk"></param>
+        /// <typeparam name="T"></typeparam>
+        /// <returns></returns>
         public T GetById<T>(object pk)
         {
             var cmd = _commandBuilder.BuildGetById<T>(pk);
@@ -156,12 +170,33 @@ namespace ORM.Core
             return (T) CreateObjectReader<T>(reader);
         }
 
-        private ObjectReader<T> CreateObjectReader<T>(IDataReader dataReader)
+        /// <summary>
+        /// Deletes an entity by its primary key
+        /// </summary>
+        /// <param name="pk"></param>
+        public void DeleteById<T>(object pk)
         {
-            var loader = new LazyLoader(_commandBuilder, _cache);
-            return new ObjectReader<T>(dataReader, loader, _cache);            
+            var cmd = _commandBuilder.BuildDeleteById<T>(pk);
+            cmd.ExecuteNonQuery();
         }
 
+        /// <summary>
+        /// Create an object reader to create objects usign a data reader
+        /// </summary>
+        /// <param name="dataReader"></param>
+        /// <typeparam name="T"></typeparam>
+        /// <returns></returns>
+        private ObjectReader<T> CreateObjectReader<T>(IDataReader dataReader)
+        {
+            var loader = new LazyLoader(_commandBuilder);
+            return new ObjectReader<T>(dataReader, loader);            
+        }
+
+        /// <summary>
+        /// Get the tables for all entities in a given assembly
+        /// </summary>
+        /// <param name="assembly"></param>
+        /// <returns></returns>
         private IEnumerable<Table> GetTables(Assembly assembly)
         {
             var entityTypes = GetEntityTypes(assembly);
@@ -170,6 +205,11 @@ namespace ORM.Core
             return tables;
         }
         
+        /// <summary>
+        /// Returns an union of the given tables and all connected tables
+        /// </summary>
+        /// <param name="tables"></param>
+        /// <returns></returns>
         private static IEnumerable<Table> GetAllTables(IEnumerable<Table> tables)
         {
             var tableList = tables.ToList();
@@ -186,6 +226,11 @@ namespace ORM.Core
             return allTables.ToList();
         }
         
+        /// <summary>
+        /// Returns all entity types in a given assembly
+        /// </summary>
+        /// <param name="assembly"></param>
+        /// <returns></returns>
         private List<Type> GetEntityTypes(Assembly assembly)
         {
             var dbContexts = GetDbContextTypes(assembly);
@@ -204,6 +249,11 @@ namespace ORM.Core
             return entities;
         }
         
+        /// <summary>
+        /// Gets all the types that inherit from DbContext in a given assembly
+        /// </summary>
+        /// <param name="assembly"></param>
+        /// <returns></returns>
         private IEnumerable<Type> GetDbContextTypes(Assembly assembly)
         {
             var dbContextType = GetType();

@@ -4,7 +4,7 @@
     {
         public static void Show()
         {
-            var dbContext = Program.CreateDbContext();
+            var dbContext = DbFactory.CreateDbContext();
             dbContext.EnsureCreated();
         }
     }
