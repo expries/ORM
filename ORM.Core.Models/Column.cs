@@ -51,11 +51,6 @@ namespace ORM.Core.Models
         /// The maximum length that may be stored in this column
         /// </summary>
         public int? MaxLength { get; private set; }
-        
-        /// <summary>
-        /// The minimum length that may be stored in this column
-        /// </summary>
-        public int? MinLength { get; private set; }
 
         public Column(string name, Type type, bool isForeignKey = false, bool isNullable = true)
         {
@@ -147,11 +142,6 @@ namespace ORM.Core.Models
             if (attribute is MaxLengthAttribute maxLengthAttribute)
             {
                 MaxLength = maxLengthAttribute.Length;
-            }
-
-            if (attribute is MinLengthAttribute minLengthAttribute)
-            {
-                MinLength = minLengthAttribute.Length;
             }
         }
         

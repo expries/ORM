@@ -6,7 +6,7 @@ using ORM.Core.Models.Exceptions;
 namespace ORM.Core.Loading
 {
     /// <summary>
-    /// Constructs lazy proxy types
+    /// Constructs lazy proxies
     /// </summary>
     public static class LazyProxyFactory
     {
@@ -52,13 +52,14 @@ namespace ORM.Core.Loading
             var moduleBuilder = assemblyBuilder.DefineDynamicModule("ProxyModule");
 
             // Create a class that derives from the given type
-            var typeBuilder = moduleBuilder.DefineType($"{type.Name}Proxy",TypeAttributes.Public | TypeAttributes.Class, type);
+            var typeBuilder = moduleBuilder.DefineType($"{type.Name}Proxy", TypeAttributes.Public | TypeAttributes.Class, type);
 
+            // Override all virtual properties
             foreach (var property in type.GetProperties())
             {
                 if (property.GetMethod?.IsVirtual ?? false)
                 {
-                    CreateProxyProperty(typeBuilder, property);
+                    OverrideWithLazyProperty(typeBuilder, property);
                 }
             }
             
@@ -73,13 +74,13 @@ namespace ORM.Core.Loading
         }
 
         /// <summary>
-        /// Create a proxy property that overrides the given property.
-        /// The proxy property uses lazy backing field instead of the build in getters and setters.
+        /// Overrides a property with a proxy property.
+        /// The proxy property uses lazy backing fields instead of the built in getters and setters.
         /// </summary>
         /// <param name="typeBuilder"></param>
         /// <param name="property"></param>
         /// <exception cref="OrmException"></exception>
-        private static void CreateProxyProperty(TypeBuilder typeBuilder, PropertyInfo property)
+        private static void OverrideWithLazyProperty(TypeBuilder typeBuilder, PropertyInfo property)
         {
             // Override property
             var newProperty = typeBuilder.DefineProperty(property.Name, PropertyAttributes.None, property.PropertyType, Type.EmptyTypes);
@@ -103,7 +104,8 @@ namespace ORM.Core.Loading
 
             if (lazyConstructor is null)
             {
-                throw new OrmException($"Lazy type {lazyType.Name} does not have a constructor with one parameter of type '{property.PropertyType.Name}'.");
+                throw new OrmException($"Lazy type {lazyType.Name} does not have a constructor tha takes one " +
+                                       $"parameter of type '{property.PropertyType.Name}'.");
             }
 
             // Get the IL generators to implement custom getter/setter

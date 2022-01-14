@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Linq;
-using System.Reflection;
 using ORM.Application.Entities;
 
 namespace ORM.Application
@@ -17,14 +16,14 @@ namespace ORM.Application
             var ctx = DbFactory.CreateDbContext();
             ctx.EnsureCreated();
 
-            Show.SaveObject.ShowBasic();
-            Show.SaveObject.ShowWithManyToOne();
+            //Show.SaveObject.ShowBasic();
+            //Show.SaveObject.ShowWithManyToOne();
             Show.SaveObject.ShowWithOneToMany();
-            Show.SaveObject.ShowWithManyToMany();
+            Show.SaveObject.ShowWithOneToMany();
+            //Show.SaveObject.ShowWithManyToMany();
 
             //var authors = ctx.GetAll<Author>().ToList();
-            var books = ctx.GetAll<Book>().ToList();
-            books.Select(b => b.Author).ToList();
+            var products = ctx.GetAll<Product>().ToList();
 
             
             //var sellers = ctx.GetAll<Seller>().ToList();

@@ -91,25 +91,13 @@ namespace ORM.Core.Caching
 
             return null;
         }
-        
+
         /// <summary>
         /// Returns whether a given entity is different to its cached version.
-        /// Returns true if the entity was not found in the cache
+        /// Returns true if the entity was not found in the cache or if it is null.
         /// </summary>
         /// <param name="entity"></param>
         /// <returns></returns>
-        public bool HasChanged(object entity)
-        {
-            var table = entity.GetType().ToTable();
-            var pk = table.PrimaryKey.GetValue(entity);
-            var cachedEntity = Get(table.Type, pk);
-
-            if (cachedEntity is null)
-            {
-                return true;
-            }
-            
-            return cachedEntity.GetHashCode() == entity.GetHashCode();
-        }
+        public bool HasChanged(object? entity) => true;
     }
 }
