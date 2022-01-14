@@ -156,7 +156,14 @@ namespace ORM.Core.Models.Extensions
 
             if (sequenceType.IsArray)
             {
-                return typeof(IEnumerable<>).MakeGenericType(sequenceType.GetElementType());
+                var elementType = sequenceType.GetElementType();
+                
+                if (elementType is null)
+                {
+                    throw new ArgumentException($"Cannot get element type for sequence type {sequenceType.Name}");
+                }
+                
+                return typeof(IEnumerable<>).MakeGenericType(elementType);
             }
 
             if (sequenceType.IsGenericType)

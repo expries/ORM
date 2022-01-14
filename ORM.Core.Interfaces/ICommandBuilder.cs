@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Data;
-using Npgsql;
 using ORM.Core.Models;
 
 namespace ORM.Core.Interfaces

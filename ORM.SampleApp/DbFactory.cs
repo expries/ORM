@@ -17,7 +17,7 @@ namespace ORM.Application
             var connection = new NpgsqlConnection(connectionString);
             var typeMapper = new PostgresDataTypeMapper();
             var dialect = new PostgresCommandBuilder(connection, typeMapper);
-            var cache = new EntityCache();
+            var cache = new StateTrackingCache();
             var dbContext = new DbContext(dialect, cache);
             connection.Open();
             return dbContext;

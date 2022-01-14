@@ -42,6 +42,6 @@ namespace ORM.Core.Interfaces
         /// </summary>
         /// <param name="entity"></param>
         /// <returns></returns>
-        public bool HasChanged(object entity);
+        public bool HasChanged(object? entity);
     }
 }

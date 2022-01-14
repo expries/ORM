@@ -57,20 +57,21 @@ namespace ORM.Core
         /// <typeparam name="T"></typeparam>
         public void Save<T>(T entity)
         {
+            // Update references on object
+            UpdateReferences(entity);
+            
             // Do nothing if cached entity did not changed
             if (!_cache.HasChanged(entity))
             {
                 return;
             }
 
-            // Update references on object
-            UpdateReferences(entity);
-
             // Save entity
             SaveEntity(entity);
-            
-            // Save many to many references
             SaveReferences(entity);
+            
+            // Save entity in cache
+            _cache.Save(entity);
         }
         
         /// <summary>

@@ -31,7 +31,7 @@ namespace ORM.Core.Loading
         /// <summary>
         /// The schema for the current row
         /// </summary>
-        private Dictionary<int, string>? _schema;
+        private Dictionary<string, int> _schema;
 
         /// <summary>
         /// The mapped object
@@ -107,13 +107,13 @@ namespace ORM.Core.Loading
         /// </summary>
         private void ReadColumnSchema()
         {
-            _schema = new Dictionary<int, string>();
+            _schema = new Dictionary<string, int>();
             int columnsCount = _reader.FieldCount;
             
             for (int i = 0; i < columnsCount; i++)
             {
                 string columnName = _reader.GetName(i);
-                _schema[i] = columnName;
+                _schema[columnName] = i;
             }
         }
 
@@ -160,11 +160,7 @@ namespace ORM.Core.Loading
 
             foreach (var property in externalProperties)
             {
-                var type = property.PropertyType;
-                var entityType = type.IsCollectionOfOneType() 
-                    ? type.GetGenericArguments().First() 
-                    : type;
-                
+                var entityType = property.PropertyType.GetUnderlyingType();
                 SetExternalProperty(property, entityType);
             }
         }
@@ -175,31 +171,25 @@ namespace ORM.Core.Loading
         /// <param name="property"></param>
         private void SetInternalProperty(PropertyInfo property)
         {
-            // check if column is in result schema
             var column = new Column(property);
-            bool schemaContainsColumn = _schema.Values.Any(s => s.ToLower() == column.Name.ToLower());
-            
-            if (!schemaContainsColumn)
-            {
-                property.SetValue(Current, null);
-                return;
-            }
-            
-            var columnSchema = _schema.FirstOrDefault(
-                kv => kv.Value.ToLower() == column.Name.ToLower());
-
-            // read value from results
-            int columnOrdinal = columnSchema.Key;
-            object value = _reader.GetValue(columnOrdinal);
-
-            // set property to value
-            if (value is DBNull)
-            {
-                property.SetValue(Current, null);
-                return;
-            }
-            
+            var value = ReadValue(column);
             property.SetValue(Current, value);
+        }
+
+        /// <summary>
+        /// Read value of column from row
+        /// </summary>
+        /// <param name="column"></param>
+        /// <returns></returns>
+        private object? ReadValue(Column column)
+        {
+            if (!_schema.ContainsKey(column.Name))
+            {
+                return null;
+            }
+
+            var index = _schema[column.Name];
+            return _reader.GetValue(index);
         }
 
         /// <summary>
@@ -213,22 +203,30 @@ namespace ORM.Core.Loading
             var table = typeof(T).ToTable();
             var relationship = table.RelationshipTo(externalType);
 
-            // select lazy loader method to use
+            // Select loader method to use
+            var type = GetType();
+            const BindingFlags flags = BindingFlags.Instance | BindingFlags.NonPublic;
+
             var loadMethodInfo = relationship switch
             {
-                RelationshipType.OneToOne => GetType().GetMethod(nameof(LoadOneToMany), BindingFlags.Instance | BindingFlags.NonPublic),
-                RelationshipType.OneToMany => GetType().GetMethod(nameof(LoadOneToMany), BindingFlags.Instance | BindingFlags.NonPublic),
-                RelationshipType.ManyToOne => GetType().GetMethod(nameof(LoadManyToOne), BindingFlags.Instance | BindingFlags.NonPublic),
-                RelationshipType.ManyToMany => GetType().GetMethod(nameof(LoadManyToMany), BindingFlags.Instance | BindingFlags.NonPublic),
+                RelationshipType.OneToOne   => type.GetMethod(nameof(LoadOneToMany), flags),
+                RelationshipType.OneToMany  => type.GetMethod(nameof(LoadOneToMany), flags),
+                RelationshipType.ManyToOne  => type.GetMethod(nameof(LoadManyToOne), flags),
+                RelationshipType.ManyToMany => type.GetMethod(nameof(LoadManyToMany), flags),
                 _ => throw new ObjectMappingException($"No relation found for property {property.Name} on type {typeof(T).Name}")
             };
-            
-            // build lazy loading method
-            var loadMethod = loadMethodInfo.MakeGenericMethod(typeof(T), externalType);
-            object? lazyResult = loadMethod.Invoke(this, new object[] {Current});
 
-            // get backing field of proxy and write lazy result to it
-            var fields = Current.GetType().GetFields(BindingFlags.Instance | BindingFlags.NonPublic);
+            if (loadMethodInfo is null)
+            {
+                throw new OrmException($"Failed to find load method for relationship {relationship}");
+            }
+            
+            // Build lazy loading method
+            var loadMethod = loadMethodInfo.MakeGenericMethod(typeof(T), externalType);
+            object? lazyResult = loadMethod.Invoke(this, new object[] { Current });
+
+            // Get lazy backing field of proxy and write lazy result to it
+            var fields = Current.GetType().GetFields(flags);
             var backingField = fields.FirstOrDefault(f => f.Name == $"_lazy{property.Name}");
             backingField?.SetValue(Current, lazyResult);
         }

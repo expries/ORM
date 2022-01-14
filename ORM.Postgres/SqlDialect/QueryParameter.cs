@@ -1,5 +1,4 @@
 ﻿using System;
-using ORM.Core.Models;
 
 namespace ORM.Postgres.SqlDialect
 {
