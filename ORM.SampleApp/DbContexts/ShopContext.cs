@@ -6,11 +6,15 @@ namespace ORM.Application.DbContexts
 {
     public class ShopContext : DbContext
     {
-        public DbSet<Product> Products { get; set; }
+        public DbSet<Product> Products { get; set; } = DbFactory.CreateDbSet<Product>();
 
-        public DbSet<Book> Books { get; set; }
+        public DbSet<Book> Books { get; set; } = DbFactory.CreateDbSet<Book>();
 
-        public ShopContext(ICommandBuilder dialect) : base(dialect)
+        public ShopContext(ICommandBuilder dialect, ICache cache) : base(dialect, cache)
+        {
+        }
+
+        protected ShopContext(ICommandBuilder dialect) : base(dialect)
         {
         }
     }

@@ -4,7 +4,7 @@ namespace ORM.Postgres.Linq.ExpressionNodeSqlTranslators
 {
     public class MethodCallExpressionTranslator : ExpressionNodeTranslator<MethodCallExpression>
     {
-        public MethodCallExpressionTranslator(PostgresQueryTranslator translator) : base(translator)
+        public MethodCallExpressionTranslator(LinqCommandBuilder translator) : base(translator)
         {
         }
         
@@ -54,6 +54,10 @@ namespace ORM.Postgres.Linq.ExpressionNodeSqlTranslators
                     
                 case "FirstOrDefault":
                     TranslateFirstOrDefault(node);
+                    return;
+                
+                case "Sum":
+                    TranslateSum(node);
                     return;
             }
         }
@@ -117,6 +121,14 @@ namespace ORM.Postgres.Linq.ExpressionNodeSqlTranslators
             Append("SELECT COUNT(*) FROM (");
             Visit(node.Arguments[0]);
             Append(") AS T");
+            
+            // if a filter is set, generate where clause
+            if (node.Arguments.Count > 1)
+            {
+                Append(" WHERE ");
+                var lambda = StripQuotes(node.Arguments[1]) as LambdaExpression;
+                Visit(lambda?.Body);
+            }
         }
 
         private void TranslateAny(MethodCallExpression node)
@@ -178,6 +190,16 @@ namespace ORM.Postgres.Linq.ExpressionNodeSqlTranslators
                 var whereLambda = StripQuotes(node.Arguments[1]) as LambdaExpression;
                 Visit(whereLambda?.Body);
             }
+        }
+
+        private void TranslateSum(MethodCallExpression node)
+        {
+            var x = StripQuotes(node.Arguments[1]) as LambdaExpression;
+            Append("SELECT SUM(");
+            Visit(x?.Body);
+            Append(") FROM (");
+            Visit(node.Arguments[0]);
+            Append(") AS T");
         }
         
         private Expression StripQuotes(Expression e)

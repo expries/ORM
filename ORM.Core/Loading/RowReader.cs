@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Data;
 using System.Linq;
 using System.Reflection;
@@ -129,14 +130,24 @@ namespace ORM.Core.Loading
             }
 
             var valueType = _reader.GetFieldType(0);
-            
-            if (valueType == typeof(long) && typeof(T) == typeof(int))
+            object? value;
+
+            if (valueType == typeof(long) && 
+                typeof(T) == typeof(int) && 
+                !_reader.IsDBNull(0))
             {
-                Current = (T) (object) _reader.GetInt32(0);
-                return;
+                value = _reader.GetInt32(0);
+            } 
+            else
+            {
+                value = _reader.GetValue(0);
             }
-            
-            object value = _reader.GetValue(0);
+
+            if (valueType == typeof(int) || valueType == typeof(long))
+            {
+                value = value == DBNull.Value ? 0 : value;
+            }
+
             Current = (T) value;
         }
 

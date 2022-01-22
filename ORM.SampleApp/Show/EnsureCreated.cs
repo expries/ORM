@@ -1,4 +1,6 @@
-﻿namespace ORM.Application.Show
+﻿using ORM.Application.DbContexts;
+
+namespace ORM.Application.Show
 {
     public static class EnsureCreated
     {

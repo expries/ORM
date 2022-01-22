@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Linq;
-using ORM.Application.Entities;
 
 namespace ORM.Application
 {
@@ -23,13 +22,15 @@ namespace ORM.Application
             //Show.SaveObject.ShowWithManyToMany();
 
             //var authors = ctx.GetAll<Author>().ToList();
-            var products = ctx.GetAll<Product>().ToList();
+            // var products = ctx.GetAll<Product>().ToList();
 
             
             //var sellers = ctx.GetAll<Seller>().ToList();
             //var products = ctx.GetAll<Product>().ToList();
-            
-            Console.WriteLine();
+
+            //var products = ctx.Books.ToList();
+            var x = ctx.Books.Count(x => x.Price > 100);
+            int i = 0;
         }
     }
 }

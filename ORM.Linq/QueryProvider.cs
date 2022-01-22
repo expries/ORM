@@ -24,17 +24,17 @@ namespace ORM.Linq
         /// <summary>
         /// Translates expression trees to sql
         /// </summary>
-        private readonly IQueryTranslator _queryTranslator;
+        private readonly ILinqCommandBuilder _linqCommandBuilder;
         
         /// <summary>
         /// Loads relationships between entities
         /// </summary>
         private readonly ILazyLoader _lazyLoader;
 
-        public QueryProvider(IDbConnection connection, IQueryTranslator queryTranslator, ILazyLoader lazyLoader)
+        public QueryProvider(IDbConnection connection, ILinqCommandBuilder linqCommandBuilder, ILazyLoader lazyLoader)
         {
             _connection = connection;
-            _queryTranslator = queryTranslator;
+            _linqCommandBuilder = linqCommandBuilder;
             _lazyLoader = lazyLoader;
         }
         
@@ -88,10 +88,7 @@ namespace ORM.Linq
         /// <returns></returns>
         public object Execute(Expression expression)
         {
-            string sql = Translate(expression);
-            
-            var cmd = _connection.CreateCommand();
-            cmd.CommandText = sql;
+            var cmd = Translate(expression);
             var dataReader = cmd.ExecuteReader();
             
             var resultType = expression.Type.GetElementTypeCustom();
@@ -105,9 +102,9 @@ namespace ORM.Linq
         /// </summary>
         /// <param name="expression"></param>
         /// <returns></returns>
-        private string Translate(Expression expression)
+        private IDbCommand Translate(Expression expression)
         {
-            return _queryTranslator.Translate(expression);
+            return _linqCommandBuilder.Translate(expression);
         }
     }
 }

@@ -5,9 +5,9 @@ namespace ORM.Postgres.Linq.ExpressionNodeSqlTranslators
 {
     public abstract class ExpressionNodeTranslator<T>
     {
-        private readonly PostgresQueryTranslator _translator;
+        private readonly LinqCommandBuilder _translator;
         
-        protected ExpressionNodeTranslator(PostgresQueryTranslator translator)
+        protected ExpressionNodeTranslator(LinqCommandBuilder translator)
         {
             _translator = translator;
         }
@@ -19,6 +19,8 @@ namespace ORM.Postgres.Linq.ExpressionNodeSqlTranslators
         protected void Append(char sqlChar) => _translator.Append(sqlChar);
 
         protected void Append(object obj) => _translator.Append(obj);
+
+        protected string AddParameter<TValue>(TValue value) => _translator.AddParameter(value);
 
         public abstract void Translate(T node);
     }

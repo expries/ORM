@@ -1,17 +1,18 @@
-﻿using System.Linq.Expressions;
+﻿using System.Data;
+using System.Linq.Expressions;
 
 namespace ORM.Linq.Interfaces
 {
     /// <summary>
     /// Translates expression trees to sql
     /// </summary>
-    public interface IQueryTranslator
+    public interface ILinqCommandBuilder
     {
         /// <summary>
         /// Translates expression tree to sql
         /// </summary>
         /// <param name="node"></param>
         /// <returns></returns>
-        public string Translate(Expression? node);
+        public IDbCommand Translate(Expression? node);
     }
 }

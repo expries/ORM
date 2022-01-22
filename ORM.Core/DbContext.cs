@@ -37,7 +37,7 @@ namespace ORM.Core
             : this(dialect, new EntityCache())
         {
         }
-        
+
         /// <summary>
         /// Creates the database schema
         /// </summary>
@@ -257,7 +257,7 @@ namespace ORM.Core
         /// <returns></returns>
         private IEnumerable<Type> GetDbContextTypes(Assembly assembly)
         {
-            var dbContextType = GetType();
+            var dbContextType = typeof(DbContext);
             var types = assembly.GetTypes();
             var contexts = types.Where(t => t.IsSubclassOf(dbContextType));
             return contexts;

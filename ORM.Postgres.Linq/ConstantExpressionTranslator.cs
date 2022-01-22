@@ -8,7 +8,7 @@ namespace ORM.Postgres.Linq.ExpressionNodeSqlTranslators
 {
     public class ConstantExpressionTranslator : ExpressionNodeTranslator<ConstantExpression>
     {
-        public ConstantExpressionTranslator(PostgresQueryTranslator translator) : base(translator)
+        public ConstantExpressionTranslator(LinqCommandBuilder translator) : base(translator)
         {
         }
 
@@ -22,25 +22,8 @@ namespace ORM.Postgres.Linq.ExpressionNodeSqlTranslators
                 return;
             }
 
-            var type = node.Value?.GetType();
-            var typeCode = Type.GetTypeCode(type);
-
-            switch (typeCode)
-            {
-                case TypeCode.Boolean:
-                    Append((bool) (node.Value ?? false) ? 1 : 0);
-                    break;
-                
-                case TypeCode.String:
-                    Append('\'');
-                    Append(node.Value);
-                    Append('\'');
-                    break;
-                
-                default:
-                    Append(node.Value);
-                    break;
-            }
+            var parameterName = AddParameter(node.Value);
+            Append($"@{parameterName}");
         }
         
         private string GetUnescapedColumnsString(EntityTable table)
