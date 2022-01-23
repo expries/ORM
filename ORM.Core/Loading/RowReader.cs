@@ -183,7 +183,7 @@ namespace ORM.Core.Loading
         private void SetInternalProperty(PropertyInfo property)
         {
             var column = new Column(property);
-            var value = ReadValue(column);
+            object? value = ReadValue(column);
             property.SetValue(Current, value);
         }
 
@@ -199,7 +199,7 @@ namespace ORM.Core.Loading
                 return null;
             }
 
-            var index = _schema[column.Name];
+            int index = _schema[column.Name];
             return _reader.GetValue(index);
         }
 

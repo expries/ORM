@@ -22,6 +22,11 @@ namespace ORM.Core.Models
         /// Primary key column of the table
         /// </summary>
         public Column PrimaryKey { get; protected set; }
+        
+        /// <summary>
+        /// Tables that represent many-to-many relationships to other entities
+        /// </summary>
+        public List<ForeignKeyTable> ForeignKeyTables { get; } = new List<ForeignKeyTable>();
 
         /// <summary>
         /// List of looked up entities, used to avoid recursions when looking up relationships to other entities

@@ -18,8 +18,8 @@ namespace ORM.Application
             var connection = new NpgsqlConnection(connectionString);
             var typeMapper = new PostgresDataTypeMapper();
             var commandBuilder = new PostgresCommandBuilder(connection, typeMapper);
-            var cache = new StateTrackingCache();
-            var dbContext = new ShopContext(commandBuilder, cache);
+            var trackingCache = new StateTrackingCache();
+            var dbContext = new ShopContext(commandBuilder, trackingCache);
             connection.Open();
             return dbContext;
         }
@@ -30,10 +30,10 @@ namespace ORM.Application
             var typeMapper = new PostgresDataTypeMapper();
             
             var commandBuilder = new PostgresCommandBuilder(connection, typeMapper);
-            var translator = new LinqCommandBuilder(connection);
+            var linqCommandBuilder = new LinqCommandBuilder(connection);
             
             var lazyLoader = new LazyLoader(commandBuilder);            
-            var provider = new QueryProvider(connection, translator, lazyLoader);
+            var provider = new QueryProvider(linqCommandBuilder, lazyLoader);
             var dbSet = new DbSet<T>(provider);
             
             connection.Open();

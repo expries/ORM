@@ -22,7 +22,7 @@ namespace ORM.Core.Models
         public List<Column> Columns { get; } = new List<Column>();
 
         /// <summary>
-        /// External fields that represent relationships to other entities
+        /// External fields that represent relationships to other tables
         /// </summary>
         public List<ExternalField> ExternalFields { get; } = new List<ExternalField>();
         
@@ -30,11 +30,6 @@ namespace ORM.Core.Models
         /// Foreign keys in the table
         /// </summary>
         public List<ForeignKey> ForeignKeys { get; } = new List<ForeignKey>();
-        
-        /// <summary>
-        /// Tables that represent many-to-many relationships to other entities
-        /// </summary>
-        public List<ForeignKeyTable> ForeignKeyTables { get; } = new List<ForeignKeyTable>();
 
         protected Table(string name)
         {

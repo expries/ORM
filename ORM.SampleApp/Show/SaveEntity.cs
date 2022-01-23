@@ -53,26 +53,7 @@ namespace ORM.Application.Show
                 Interest = 10,
                 Price = 100,
                 FirstName = "Max",
-                LastName = "Mustermann",
-                Books = new List<Book>
-                {
-                     new Book
-                     {
-                         Likes = 10,
-                         Price = 100,
-                         Title = "My book",
-                         Purchases = 10,
-                         BookId = 10
-                     },
-                     new Book
-                     {
-                         Likes = 20,
-                         Price = 200,
-                         Title = "My book 2",
-                         Purchases = 20,
-                         BookId = 11
-                     }
-                }
+                LastName = "Mustermann"
             };
             
             DbContext.Save(author);

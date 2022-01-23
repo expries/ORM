@@ -93,7 +93,7 @@ namespace ORM.Core.Models.Extensions
                 return false;
             }
 
-            Type[] arguments = type.GetGenericArguments();
+            var arguments = type.GetGenericArguments();
             return arguments.Length == 1;
         }
         

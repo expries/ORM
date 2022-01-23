@@ -21,7 +21,7 @@ namespace ORM.Core.Caching
         public void Save(object entity)
         {
             var table = entity.GetType().ToTable();
-            var pk = table.PrimaryKey.GetValue(entity);
+            object? pk = table.PrimaryKey.GetValue(entity);
 
             if (pk is null)
             {
@@ -39,7 +39,7 @@ namespace ORM.Core.Caching
         public void Remove(object entity)
         {
             var table = entity.GetType().ToTable();
-            var pk = table.PrimaryKey.GetValue(entity);
+            object? pk = table.PrimaryKey.GetValue(entity);
 
             if (pk is null)
             {

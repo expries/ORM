@@ -17,15 +17,15 @@ namespace ORM.Postgres.SqlDialect
     {
         private readonly IDbTypeMapper _typeMapper;
         
-        private IDbConnection Connection { get; }
-        
-        private StringBuilder _sb = new StringBuilder();
+        private readonly StringBuilder _sql = new StringBuilder();
+
+        private readonly IDbConnection _connection;
 
         private int _parameterCount;
 
-        public PostgresCommandBuilder(NpgsqlConnection connection, IDbTypeMapper typeMapper)
+        public PostgresCommandBuilder(IDbConnection connection, IDbTypeMapper typeMapper)
         {
-            Connection = connection;
+            _connection = connection;
             _typeMapper = typeMapper;
         }
 
@@ -36,15 +36,14 @@ namespace ORM.Postgres.SqlDialect
         /// <returns></returns>
         public IDbCommand BuildEnsureCreated(List<Table> tables)
         {
-            tables = tables.ToList();
-            var createTables = TranslateCreateTables(tables);
-            var dropTables = TranslateDropTables(tables);
-            var addForeignKeys = TranslateAddForeignKeys(tables);
-
-            _sb.Append(dropTables.Sql);
-            _sb.Append(createTables.Sql);
-            _sb.Append(addForeignKeys.Sql);
+            tables.ForEach(WriteDropTable);
+            tables.ForEach(WriteCreateTable);
             
+            foreach (var table in tables)
+            {
+                table.ForeignKeys.ForEach(fc => WriteAddForeignKey(fc, table));
+            }
+
             var query = CreateQuery();
             return CreateCommand(query);
         }
@@ -56,7 +55,21 @@ namespace ORM.Postgres.SqlDialect
         /// <returns></returns>
         public IDbCommand BuildGetAll<T>()
         {
-            var query = TranslateSelectAll<T>();
+            var table = typeof(T).ToTable();
+            
+            var columns = table.Columns
+                .Where(c => c.IsMapped)
+                .Select(c => $"\"{table.Name}\".\"{c.Name}\"");
+            
+            string columnsString = string.Join(",", columns);
+            
+            _sql
+                .Append($"SELECT {columnsString}")
+                .Append(' ')
+                .Append(Environment.NewLine)
+                .Append($"FROM \"{table.Name}\"");
+            
+            var query = CreateQuery();
             return CreateCommand(query);
         }
         
@@ -68,7 +81,23 @@ namespace ORM.Postgres.SqlDialect
         /// <returns></returns>
         public IDbCommand BuildGetById<T>(object pk)
         {
-            var query = TranslateSelectById<T>(pk);
+            var table = typeof(T).ToTable();
+            var pkParameter = CreateParameter(pk);
+            
+            var columns = table.Columns
+                .Where(c => c.IsMapped)
+                .Select(c => $"\"{table.Name}\".\"{c.Name}\"");
+            
+            string columnsString = string.Join(",", columns);
+            _sql.Append($"SELECT {columnsString}")
+                .Append(' ')
+                .Append(Environment.NewLine)
+                .Append($"FROM \"{table.Name}\"")
+                .Append(' ')
+                .Append(Environment.NewLine)
+                .Append($"WHERE \"{table.PrimaryKey.Name}\" = @{pkParameter.Name}");
+
+            var query = CreateQuery(pkParameter);
             return CreateCommand(query);
         }
 
@@ -79,267 +108,6 @@ namespace ORM.Postgres.SqlDialect
         /// <typeparam name="T"></typeparam>
         /// <returns></returns>
         public IDbCommand BuildSave<T>(T entity)
-        {
-            var query = TranslateSaveEntity(entity);
-            return CreateCommand(query);
-        }
-
-        public IDbCommand BuildDeleteById<T>(object pk)
-        {
-            var query = TranslateDelete<T>(pk);
-            return CreateCommand(query);
-        }
-
-        private Query TranslateDelete<T>(object pk)
-        {
-            var entityType = typeof(T);
-            var entityTable = entityType.ToTable();
-            var primaryKeyParameter = Parameterize("pk", pk);
-
-            _sb
-                .Append($"DELETE FROM \"{entityTable.Name}\" ")
-                .Append(Environment.NewLine)
-                .Append($"WHERE {entityTable.PrimaryKey.Name} = @{primaryKeyParameter.Name}");
-
-            return CreateQuery(primaryKeyParameter);
-        }
-
-        /// <summary>
-        /// Builds a command to remove references between an entity and a reference type that share a
-        /// many to many relationship by deleting rows in their corresponding joining table.
-        /// </summary>
-        /// <param name="entity"></param>
-        /// <param name="referenceType"></param>
-        /// <returns></returns>
-        public IDbCommand BuildRemoveManyToManyReferences(object entity, Type referenceType)
-        {
-            var entityType = entity.GetType();
-            var entityTable = entityType.ToTable();
-            var primaryKey = entityTable.PrimaryKey.GetValue(entity);
-            var referenceTable = referenceType.ToTable();
-            
-            // get foreign key helper table
-            var fkTable = entityTable.ForeignKeyTables.First(x => 
-                x.MapsTypes(entityTable.Type, referenceTable.Type));
-            
-            // get foreign key that points to entity types table
-            var fkColumnForEntityTable = fkTable.ForeignKeys
-                .First(fk => fk.RemoteTable.Name == entityTable.Name)
-                .LocalColumn;
-            
-            var cmd = Connection.CreateCommand();
-            cmd.AddParameter("pk", primaryKey ?? DBNull.Value);
-            
-            cmd.CommandText = $"DELETE FROM \"{fkTable.Name}\" " +
-                              $"WHERE \"{fkColumnForEntityTable.Name}\" = @pk " +
-                              $"{Environment.NewLine}";
-
-            return cmd;
-        }
-
-        /// <summary>
-        /// Builds a command to save the references between two entities that share a many to many
-        /// relationship by inserting rows in the corresponding joining table 
-        /// </summary>
-        /// <param name="entity"></param>
-        /// <param name="referenceType"></param>
-        /// <param name="referencePrimaryKeys"></param>
-        /// <returns></returns>
-        public IDbCommand BuildSaveManyToManyReferences(object entity, Type referenceType, List<object> referencePrimaryKeys)
-        {
-            var entityType = entity.GetType();
-            var entityTable = entityType.ToTable();
-            var referenceTable = referenceType.ToTable();
-
-            var primaryKey = entityTable.PrimaryKey.GetValue(entity);
-
-            // get foreign key helper table
-            var fkTable = entityTable.ForeignKeyTables.First(x => 
-                x.MapsTypes(entityTable.Type, referenceTable.Type));
-
-            // get columns for foreign keys
-            var sourceColumn = fkTable.ForeignKeys
-                .First(fk => fk.RemoteTable.Name == entityTable.Name)
-                .LocalColumn;
-            
-            var destColumn = fkTable.ForeignKeys
-                .First(fk => fk.RemoteTable.Name == referenceTable.Name)
-                .LocalColumn;
-
-            // Insert new reference rows into many to many table
-            var subCmd = Connection.CreateCommand();
-            
-            subCmd.AddParameter("pk", primaryKey ?? DBNull.Value);
-
-            subCmd.CommandText = $"INSERT INTO \"{fkTable.Name}\" (\"{sourceColumn.Name}\", \"{destColumn.Name}\") " +
-                                 $"{Environment.NewLine}" + 
-                                 $"VALUES " +
-                                 $"{Environment.NewLine} ";
-
-            for (int i = 0; i < referencePrimaryKeys.Count; i++)
-            {
-                object destinationPk = referencePrimaryKeys[i];
-                subCmd.AddParameter($"pkDest{i}", destinationPk);
-                subCmd.CommandText += $"(@pk, @pkDest{i})";
-
-                if (i < referencePrimaryKeys.Count - 1)
-                {
-                    subCmd.CommandText += ",";
-                }
-
-                subCmd.CommandText += Environment.NewLine;
-            }
-
-            return subCmd;
-        }
-
-        /// <summary>
-        /// Builds a command to load an entity that is the one-side of a many-to-one relationship
-        /// given the entity of the many side
-        /// </summary>
-        /// <param name="entity"></param>
-        /// <typeparam name="TMany"></typeparam>
-        /// <typeparam name="TOne"></typeparam>
-        /// <returns></returns>
-        public IDbCommand BuildLoadManyToOne<TMany, TOne>(TMany entity)
-        {
-            var query = TranslateLoadManyToOne<TMany, TOne>(entity);
-            return CreateCommand(query, newConnection: true);
-        }
-
-        /// <summary>
-        /// Builds a command to load the entities that are the many-side of a one-to-many relationship given
-        /// an entity of the one-side
-        /// </summary>
-        /// <param name="entity"></param>
-        /// <typeparam name="TOne"></typeparam>
-        /// <typeparam name="TMany"></typeparam>
-        /// <returns></returns>
-        public IDbCommand BuildLoadOneToMany<TOne, TMany>(TOne entity)
-        {
-            var query = TranslateLoadOneToMany<TOne, TMany>(entity);
-            return CreateCommand(query, newConnection: true);
-        }
-
-        /// <summary>
-        /// Builds a command to load the entities of a related type in a many-to-many relationship, given an
-        /// entity of the other side of the relationship
-        /// </summary>
-        /// <param name="entity"></param>
-        /// <typeparam name="TManyA"></typeparam>
-        /// <typeparam name="TManyB"></typeparam>
-        /// <returns></returns>
-        public IDbCommand BuildLoadManyToMany<TManyA, TManyB>(TManyA entity)
-        {
-            var query = TranslateLoadManyToMany<TManyA, TManyB>(entity);
-            return CreateCommand(query, newConnection: true);
-        }
-        
-        private Query CreateQuery(params QueryParameter[] parameters)
-        {
-            var parameterList = parameters.ToList();
-            return CreateQuery(parameterList);
-        }
-
-        private Query CreateQuery(List<QueryParameter> parameters)
-        {
-            string sql = _sb.ToString();
-            var query = new Query(sql, parameters);
-            _sb.Clear();
-            return query;
-        }
-        
-        private static NpgsqlConnection CreateConnection()
-        {
-            var connection = new NpgsqlConnection("Server=localhost;Port=5434;User Id=postgres;Password=postgres;");
-            connection.Open();
-            return connection;
-        }
-
-        /// <summary>
-        /// Creates an IDbCommand given a query.
-        /// </summary>
-        /// <param name="query"></param>
-        /// <param name="newConnection"></param>
-        /// <returns></returns>
-        private IDbCommand CreateCommand(Query query, bool newConnection = false)
-        {
-            var connection = newConnection ? CreateConnection() : Connection;
-            
-            // create command and set sql
-            var cmd = connection.CreateCommand();
-            cmd.CommandText = query.Sql;
-            
-            // add parameters to command
-            query.Parameters
-                .ToList()
-                .ForEach(p => cmd.AddParameter(p.Name, p.Value));
-
-            // reset parameter count, that new commands will start counting at 0
-            _parameterCount = 0;
-
-            Console.WriteLine(cmd.CommandText);
-            return cmd;
-        }
-        
-        private Query TranslateCreateTables(List<Table> tables)
-        {
-            var queries = tables.Select(TranslateCreateTable).ToList();
-            queries.ForEach(x => _sb.Append(x.Sql));
-            return CreateQuery();
-        }
-
-        private Query TranslateDropTables(List<Table> tables)
-        {
-            var queries = tables.Select(TranslateDropTable).ToList();
-            queries.ForEach(x => _sb.Append(x.Sql));
-            return CreateQuery();
-        }
-        
-        private Query TranslateAddForeignKeys(List<Table> tables)
-        {
-            _sb = new StringBuilder();
-            
-            foreach (var table in tables)
-            {
-                var queries = table.ForeignKeys
-                    .Select(fc => TranslateAddForeignKey(fc, table))
-                    .ToList();
-                
-                queries.ForEach(x => _sb.Append(x.Sql));
-            }
-
-            return CreateQuery();
-        }
-        
-        private Query TranslateSelectAll<T>()
-        {
-            var table = typeof(T).ToTable();
-            
-            var columns = table.Columns
-                .Where(c => c.IsMapped)
-                .Select(c => $"\"{table.Name}\".\"{c.Name}\"");
-            
-            string columnsString = string.Join(",", columns);
-            _sb.Append($"SELECT {columnsString} FROM \"{table.Name}\"");
-            return CreateQuery();
-        }
-
-        private Query TranslateSelectById<T>(object pk)
-        {
-            var table = typeof(T).ToTable();
-            string selectSql = TranslateSelectAll<T>().Sql;
-            var pkParameter = Parameterize(pk);
-
-            _sb
-                .Append(selectSql)
-                .Append(' ')
-                .Append($"WHERE \"{table.PrimaryKey.Name}\" = @{pkParameter.Name}");
-            
-            return CreateQuery(pkParameter);
-        }
-
-        private Query TranslateSaveEntity<T>(T entity)
         {
             var type = entity.GetType();
             var table = type.ToTable();
@@ -352,8 +120,8 @@ namespace ORM.Postgres.SqlDialect
             {
                 if (column.IsMapped && !column.IsForeignKey)
                 {
-                    var value = column.GetValue(entity);
-                    var parameter = Parameterize(value);
+                    object? value = column.GetValue(entity);
+                    var parameter = CreateParameter(value);
                     columnsForParameters[parameter] = column;
                     parameters.Add(parameter);
                 }
@@ -370,7 +138,7 @@ namespace ORM.Postgres.SqlDialect
                 object? value = property.GetValue(entity);
                 object? primaryKey = GetPrimaryKey(value);
                 
-                var fkParameter = Parameterize(primaryKey);
+                var fkParameter = CreateParameter(primaryKey);
                 columnsForParameters[fkParameter] = foreignKey.LocalColumn;
                 parameters.Add(fkParameter);
             }
@@ -381,7 +149,7 @@ namespace ORM.Postgres.SqlDialect
             string columnsString = string.Join(',', columns);
             string valuesString = string.Join(',', values);
 
-            _sb
+            _sql
                 .Append($"INSERT INTO \"{table.Name}\" ({columnsString})")
                 .Append(' ')
                 .Append(Environment.NewLine)
@@ -402,44 +170,146 @@ namespace ORM.Postgres.SqlDialect
                 var parameter = parameters[i];
                 var column = columnsForParameters[parameter];
                 
-                _sb.Append($"\"{column.Name}\" = @{parameter.Name}");
+                _sql.Append($"\"{column.Name}\" = @{parameter.Name}");
 
                 if (i < parameters.Count - 1)
                 {
-                    _sb.Append(',');
+                    _sql.Append(',');
                 }
                 
-                _sb.Append(Environment.NewLine);
+                _sql.Append(Environment.NewLine);
             }
 
-            _sb
+            _sql
                 .Append($"RETURNING \"{table.PrimaryKey.Name}\"")
                 .Append(Environment.NewLine);
 
-            return CreateQuery(parameters);
-        }
-        
-        /// <summary>
-        /// Gets the primary key of an entity
-        /// </summary>
-        /// <param name="value"></param>
-        /// <returns></returns>
-        private static object? GetPrimaryKey(object? value)
-        {
-            var type = value?.GetType();
-            var table = type?.ToTable();
-            var pkColumn = table?.PrimaryKey;
-            return pkColumn?.GetValue(value);
+            var query = CreateQuery(parameters);
+            return CreateCommand(query);
         }
 
-        private Query TranslateLoadManyToOne<TMany, TOne>(TMany entity)
+        public IDbCommand BuildDeleteById<T>(object pk)
+        {
+            var entityType = typeof(T);
+            var entityTable = entityType.ToTable();
+            var primaryKeyParameter = CreateParameter(pk);
+
+            _sql
+                .Append($"DELETE FROM \"{entityTable.Name}\" ")
+                .Append(Environment.NewLine)
+                .Append($"WHERE {entityTable.PrimaryKey.Name} = @{primaryKeyParameter.Name}");
+
+            var query = CreateQuery(primaryKeyParameter);
+            return CreateCommand(query);
+        }
+
+        /// <summary>
+        /// Builds a command to remove references between an entity and a reference type that share a
+        /// many to many relationship by deleting rows in their corresponding joining table.
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <param name="referenceType"></param>
+        /// <returns></returns>
+        public IDbCommand BuildRemoveManyToManyReferences(object entity, Type referenceType)
+        {
+            var entityType = entity.GetType();
+            var entityTable = entityType.ToTable();
+            var referenceTable = referenceType.ToTable();
+            
+            // get foreign key helper table
+            var fkTable = entityTable.ForeignKeyTables.First(x => 
+                x.MapsTypes(entityTable.Type, referenceTable.Type));
+            
+            // get foreign key that points to entity types table
+            var fkColumnForEntityTable = fkTable.ForeignKeys
+                .First(fk => fk.RemoteTable.Name == entityTable.Name)
+                .LocalColumn;
+            
+            object? primaryKey = entityTable.PrimaryKey.GetValue(entity);
+            var primaryKeyParameter = CreateParameter(primaryKey);
+
+            _sql
+                .Append($"DELETE FROM \"{fkTable.Name}\"")
+                .Append(' ')
+                .Append($"WHERE \"{fkColumnForEntityTable.Name}\" = @{primaryKeyParameter.Name}")
+                .Append(' ')
+                .Append($"{Environment.NewLine}");
+
+            var query = CreateQuery(primaryKeyParameter);
+            return CreateCommand(query);
+        }
+
+        /// <summary>
+        /// Builds a command to save the references between two entities that share a many to many
+        /// relationship by inserting rows in the corresponding joining table 
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <param name="referenceType"></param>
+        /// <param name="referencePrimaryKeys"></param>
+        /// <returns></returns>
+        public IDbCommand BuildSaveManyToManyReferences(object entity, Type referenceType, List<object> referencePrimaryKeys)
+        {
+            var entityType = entity.GetType();
+            var entityTable = entityType.ToTable();
+            var referenceTable = referenceType.ToTable();
+            var parameters = new List<QueryParameter>();
+
+            // get foreign key helper table
+            var fkTable = entityTable.ForeignKeyTables.First(x => x.MapsTypes(entityTable.Type, referenceTable.Type));
+
+            // get columns for foreign keys
+            var sourceColumn = fkTable.ForeignKeys.First(fk => fk.RemoteTable.Type == entityTable.Type).LocalColumn;
+            var destColumn = fkTable.ForeignKeys.First(fk => fk.RemoteTable.Name == referenceTable.Name).LocalColumn;
+
+            // Insert new reference rows into many to many table
+            object? primaryKey = entityTable.PrimaryKey.GetValue(entity);
+            var primaryKeyParameter = CreateParameter(primaryKey);
+            parameters.Add(primaryKeyParameter);
+
+            _sql
+                .Append($"INSERT INTO \"{fkTable.Name}\" (\"{sourceColumn.Name}\", \"{destColumn.Name}\")")
+                .Append(' ')
+                .Append(Environment.NewLine)
+                .Append(' ')
+                .Append("VALUES")
+                .Append(' ')
+                .Append(Environment.NewLine)
+                .Append(' ');
+
+            for (int i = 0; i < referencePrimaryKeys.Count; i++)
+            {
+                object referencePk = referencePrimaryKeys[i];
+                var referencePkParameter = CreateParameter(referencePk);
+                parameters.Add(referencePkParameter);
+                
+                _sql.Append($"(@{primaryKeyParameter.Name}, @{referencePkParameter.Name})");
+
+                if (i < referencePrimaryKeys.Count - 1)
+                {
+                    _sql.Append(',');
+                }
+
+                _sql.Append(Environment.NewLine);
+            }
+            
+            var query = CreateQuery(parameters);
+            return CreateCommand(query);
+        }
+
+        /// <summary>
+        /// Builds a command to load an entity that is the one-side of a many-to-one relationship
+        /// given the entity of the many side
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <typeparam name="TMany"></typeparam>
+        /// <typeparam name="TOne"></typeparam>
+        /// <returns></returns>
+        public IDbCommand BuildLoadManyToOne<TMany, TOne>(TMany entity)
         {
             var manyTable = typeof(TMany).ToTable();
             var oneTable = typeof(TOne).ToTable();
-
-            // Get primary key property
-            var pkProperty = manyTable.GetPropertyForColumn(manyTable.PrimaryKey);
-            object? pk = pkProperty?.GetValue(entity);
+            
+            object? pk = manyTable.PrimaryKey.GetValue(entity);
 
             if (pk is null)
             {
@@ -447,84 +317,93 @@ namespace ORM.Postgres.SqlDialect
                                        $"found for type {manyTable.Type.Name}");
             }
             
-            // Parameterize primary key
-            var pkParameter = Parameterize(pk);
-
-            // Build SQL
+            var pkParameter = CreateParameter(pk);
+            
             var columns = oneTable.Columns
                 .Where(c => c.IsMapped)
                 .Select(c => $"t.\"{c.Name}\"");
 
             string columnString = string.Join(',', columns);
-            
-            var pkColumn = manyTable.Columns.First(c => c.IsPrimaryKey);
-            var fkPkColumn = oneTable.Columns.First(c => c.IsPrimaryKey);
-            var fk  = manyTable.ForeignKeys.First(c => c.RemoteTable.Name == oneTable.Name);
-            var fkColumn = fk.LocalColumn;
+            var fk  = manyTable.ForeignKeys.First(c => c.RemoteTable.Type == oneTable.Type);
 
-            _sb.Append($"SELECT {columnString} FROM \"{manyTable.Name}\" " +
-                       $"JOIN \"{oneTable.Name}\" t on t.\"{fkPkColumn.Name}\" = \"{manyTable.Name}\".\"{fkColumn.Name}\" " +
-                       $"WHERE \"{manyTable.Name}\".\"{pkColumn.Name}\" = @{pkParameter.Name}");
+            _sql
+                .Append($"SELECT {columnString}")
+                .Append(' ')
+                .Append($"FROM \"{manyTable.Name}\"")
+                .Append(' ')
+                .Append($"JOIN \"{oneTable.Name}\" t")
+                .Append(' ')
+                .Append($"ON t.\"{oneTable.PrimaryKey.Name}\" = \"{manyTable.Name}\".\"{fk.LocalColumn.Name}\"")
+                .Append(' ')
+                .Append($"WHERE \"{manyTable.Name}\".\"{manyTable.PrimaryKey.Name}\" = @{pkParameter.Name}");
 
-            return CreateQuery(pkParameter);
+            var query = CreateQuery(pkParameter);
+            return CreateCommand(query, newConnection: true);
         }
 
-        private Query TranslateLoadOneToMany<TOne, TMany>(TOne entity)
+        /// <summary>
+        /// Builds a command to load the entities that are the many-side of a one-to-many relationship given
+        /// an entity of the one-side
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <typeparam name="TOne"></typeparam>
+        /// <typeparam name="TMany"></typeparam>
+        /// <returns></returns>
+        public IDbCommand BuildLoadOneToMany<TOne, TMany>(TOne entity)
         {
             var oneTable = typeof(TOne).ToTable();
             var manyTable = typeof(TMany).ToTable();
+            object? pk = oneTable.PrimaryKey.GetValue(entity);
 
-            // Get primary key property
-            var pkProperty = oneTable.GetPropertyForColumn(oneTable.PrimaryKey);
-            object? pk = pkProperty?.GetValue(entity);
-            
             if (pk is null)
             {
                 throw new OrmException($"Failed to load many to one relationship: no primary key " +
                                        $"found for type {manyTable.Type.Name}");
             }
             
-            // Parameterize primary key
-            var pkParameter = Parameterize(pk);
-
-            // Build SQL
+            var pkParameter = CreateParameter(pk);
+            
             var columns = manyTable.Columns
                 .Where(c => c.IsMapped)
                 .Select(c => $"\"{manyTable.Name}\".\"{c.Name}\"");
 
             string columnsString = string.Join(',', columns);
-            var fk  = manyTable.ForeignKeys.First(c => c.RemoteTable.Name == oneTable.Name);
+            var fk  = manyTable.ForeignKeys.First(c => c.RemoteTable.Type == oneTable.Type);
 
-            _sb
-                .Append($"SELECT {columnsString} FROM \"{manyTable.Name}\"")
+            _sql
+                .Append($"SELECT {columnsString}")
+                .Append(' ')
+                .Append($"FROM \"{manyTable.Name}\"")
                 .Append(' ')
                 .Append($"JOIN \"{oneTable.Name}\" t")
                 .Append(' ')
-                .Append("ON")
-                .Append(' ')
-                .Append($"t.\"{oneTable.PrimaryKey.Name}\" = \"{manyTable.Name}\".\"{fk.LocalColumn.Name}\"")
+                .Append($"ON t.\"{oneTable.PrimaryKey.Name}\" = \"{manyTable.Name}\".\"{fk.LocalColumn.Name}\"")
                 .Append(' ')
                 .Append($"WHERE t.\"{oneTable.PrimaryKey.Name}\" = @{pkParameter.Name}");
 
-            return CreateQuery(pkParameter);
+            var query = CreateQuery(pkParameter);
+            return CreateCommand(query, newConnection: true);
         }
 
-        private Query TranslateLoadManyToMany<TManyA, TManyB>(TManyA entity)
+        /// <summary>
+        /// Builds a command to load the entities of a related type in a many-to-many relationship, given an
+        /// entity of the other side of the relationship
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <typeparam name="TManyA"></typeparam>
+        /// <typeparam name="TManyB"></typeparam>
+        /// <returns></returns>
+        public IDbCommand BuildLoadManyToMany<TManyA, TManyB>(TManyA entity)
         {
             var manyATable = typeof(TManyA).ToTable();
             var manyBTable = typeof(TManyB).ToTable();
 
             // Find foreign key table for the two types
-            var fkTable = manyATable.ForeignKeyTables.First(_ => 
-                _.TableA.Type == typeof(TManyA) && _.TableB.Type == typeof(TManyB) || 
-                _.TableA.Type == typeof(TManyB) && _.TableB.Type == typeof(TManyA));
+            var fkTable = manyATable.ForeignKeyTables.First(_ => _.MapsTypes(manyATable.Type, manyBTable.Type));
 
             // Find tables for entities
-            var fkTableA = fkTable.ForeignKeys.First(fk => 
-                fk.RemoteTable is EntityTable t && t.Type == typeof(TManyA));
-            
-            var fkTableB = fkTable.ForeignKeys.First(fk => 
-                fk.RemoteTable is EntityTable t && t.Type == typeof(TManyB));
+            var fkTableA = fkTable.ForeignKeys.First(fk => fk.RemoteTable.Type == manyATable.Type);
+            var fkTableB = fkTable.ForeignKeys.First(fk => fk.RemoteTable.Type == manyBTable.Type);
             
             // Build SQL
             var columns = manyBTable.Columns
@@ -533,55 +412,61 @@ namespace ORM.Postgres.SqlDialect
 
             string columnsString = string.Join(",", columns);
 
-            _sb.Append($"SELECT {columnsString} FROM \"{manyATable.Name}\" " +
-                       $"JOIN \"{fkTable.Name}\" t ON \"{manyATable.Name}\".\"{manyATable.PrimaryKey.Name}\" = t.\"{fkTableA.LocalColumn.Name}\" " +
-                       $"JOIN \"{manyBTable.Name}\" ON t.\"{fkTableB.LocalColumn.Name}\" = \"{manyBTable.Name}\".\"{manyBTable.PrimaryKey.Name}\"");
+            _sql.Append($"SELECT {columnsString}")
+                .Append(' ')
+                .Append($"FROM \"{manyATable.Name}\"")
+                .Append(' ')
+                .Append($"JOIN \"{fkTable.Name}\" t")
+                .Append(' ')
+                .Append($"ON \"{manyATable.Name}\".\"{manyATable.PrimaryKey.Name}\" = t.\"{fkTableA.LocalColumn.Name}\"")
+                .Append(' ')
+                .Append($"JOIN \"{manyBTable.Name}\"")
+                .Append(' ')
+                .Append($"ON t.\"{fkTableB.LocalColumn.Name}\" = \"{manyBTable.Name}\".\"{manyBTable.PrimaryKey.Name}\"");
 
-            return CreateQuery();
+            var query = CreateQuery();
+            return CreateCommand(query, newConnection: true);
         }
 
-        private Query TranslateDropTable(Table table)
+        private void WriteDropTable(Table table)
         {
-            _sb
+            _sql
                 .Append($"DROP TABLE IF EXISTS \"{table.Name}\" CASCADE;")
                 .Append(Environment.NewLine);
-
-            return CreateQuery();
         }
         
-        private Query TranslateCreateTable(Table table)
+        private void WriteCreateTable(Table table)
         {
-            _sb
+            _sql
                 .Append($"CREATE TABLE \"{table.Name}\"")
                 .Append(' ')
                 .Append('(')
                 .Append(Environment.NewLine);
 
             int i = 0;
+            var columns = table.Columns.Where(c => c.IsMapped);
             
-            foreach (var column in table.Columns)
+            foreach (var column in columns)
             {
-                _sb.Append('\t');
-                TranslateColumn(column);
+                _sql.Append('\t');
+                WriteColumn(column);
                 
                 if (i < table.Columns.Count - 1)
                 {
-                    _sb.Append(',');
+                    _sql.Append(',');
                 }
 
-                _sb.Append(Environment.NewLine);
+                _sql.Append(Environment.NewLine);
                 i++;
             }
 
-            _sb
+            _sql
                 .Append(')')
                 .Append(';')
                 .Append(Environment.NewLine);
-
-            return CreateQuery();
         }
         
-        private void TranslateColumn(Column column)
+        private void WriteColumn(Column column)
         {
             var dbType = _typeMapper.Map(column.Type);
             
@@ -591,36 +476,36 @@ namespace ORM.Postgres.SqlDialect
                 dbType = maxLengthType;
             }
 
-            _sb
+            _sql
                 .Append($"\"{column.Name}\"")
                 .Append(' ')
                 .Append(dbType);
 
             if (column.IsPrimaryKey)
             {
-                _sb
+                _sql
                     .Append(' ')
                     .Append("PRIMARY KEY");
             }
                 
             if (!column.IsNullable)
             {
-                _sb
+                _sql
                     .Append(' ')
                     .Append("NOT NULL");
             }
 
             if (column.IsUnique)
             {
-                _sb
+                _sql
                     .Append(' ')
                     .Append("UNIQUE");
             }
         }
         
-        private Query TranslateAddForeignKey(ForeignKey foreignKey, Table table)
+        private void WriteAddForeignKey(ForeignKey foreignKey, Table table)
         {
-            _sb
+            _sql
                 .Append("ALTER TABLE")
                 .Append(' ')
                 .Append($"\"{table.Name}\"")
@@ -644,19 +529,91 @@ namespace ORM.Postgres.SqlDialect
                 .Append("ON DELETE CASCADE")
                 .Append(';')
                 .Append(Environment.NewLine);
-
-            return CreateQuery();
         }
 
-        private static QueryParameter Parameterize(string name, object? value)
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <returns></returns>
+        private static IDbConnection CreateConnection()
         {
-            return new QueryParameter(name, value);
+            var connection = new NpgsqlConnection("Server=localhost;Port=5434;User Id=postgres;Password=postgres;");
+            connection.Open();
+            return connection;
         }
         
-        private QueryParameter Parameterize(object? value)
+        /// <summary>
+        /// Creates an IDbCommand for a given query.
+        /// </summary>
+        /// <param name="query"></param>
+        /// <param name="newConnection"></param>
+        /// <returns></returns>
+        private IDbCommand CreateCommand(Query query, bool newConnection = false)
+        {
+            var connection = newConnection ? CreateConnection() : _connection;
+            
+            // create command and set sql
+            var cmd = connection.CreateCommand();
+            cmd.CommandText = query.Sql;
+            
+            // add parameters to command
+            query.Parameters
+                .ToList()
+                .ForEach(p => cmd.AddParameter(p.Name, p.Value));
+
+            // reset parameter count, that new commands will start counting at 0
+            _parameterCount = 0;
+            
+            Console.WriteLine($"Executing SQL statement: {Environment.NewLine}{cmd.CommandText}{Environment.NewLine}");
+            return cmd;
+        }
+        
+        /// <summary>
+        /// Creates a query consisting of the current SQL statement and the given parameters
+        /// </summary>
+        /// <param name="parameters"></param>
+        /// <returns></returns>
+        private Query CreateQuery(params QueryParameter[] parameters)
+        {
+            var parameterList = parameters.ToList();
+            return CreateQuery(parameterList);
+        }
+
+        /// <summary>
+        /// Creates a query consisting of the current SQL statement and a given parameters
+        /// </summary>
+        /// <param name="parameters"></param>
+        /// <returns></returns>
+        private Query CreateQuery(List<QueryParameter> parameters)
+        {
+            string sql = _sql.ToString();
+            var query = new Query(sql, parameters);
+            _sql.Clear();
+            return query;
+        }
+
+        /// <summary>
+        /// Create a parameter for a value
+        /// </summary>
+        /// <param name="value"></param>
+        /// <returns></returns>
+        private QueryParameter CreateParameter(object? value)
         {
             string parameterName = $"p{++_parameterCount}";
             return new QueryParameter(parameterName, value);
+        }
+        
+        /// <summary>
+        /// Gets the primary key of an entity
+        /// </summary>
+        /// <param name="value"></param>
+        /// <returns></returns>
+        private static object? GetPrimaryKey(object? value)
+        {
+            var type = value?.GetType();
+            var table = type?.ToTable();
+            var pkColumn = table?.PrimaryKey;
+            return pkColumn?.GetValue(value);
         }
     }
 }

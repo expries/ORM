@@ -27,7 +27,7 @@ namespace ORM.Application.Show
             
             foreach (var property in savedAuthor.GetType().GetProperties())
             {
-                object? value = property.GetValue(author);
+                object? value = property.GetValue(savedAuthor);
                 Console.WriteLine($"{property.Name} = {value}");
             }
         }

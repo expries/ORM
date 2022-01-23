@@ -23,7 +23,7 @@ namespace ORM.Core.Caching
         public void Save(object entity)
         {
             var table = entity.GetType().ToTable();
-            var pk = table.PrimaryKey.GetValue(entity);
+            object? pk = table.PrimaryKey.GetValue(entity);
 
             if (pk is null)
             {
@@ -42,7 +42,7 @@ namespace ORM.Core.Caching
         public void Remove(object entity)
         {
             var table = entity.GetType().ToTable();
-            var pk = table.PrimaryKey.GetValue(entity);
+            object? pk = table.PrimaryKey.GetValue(entity);
 
             if (pk is null)
             {
@@ -109,10 +109,10 @@ namespace ORM.Core.Caching
             }
             
             var table = entity.GetType().ToTable();
-            var pk = table.PrimaryKey.GetValue(entity);
+            object? pk = table.PrimaryKey.GetValue(entity);
 
-            var storedHash = GetHash(entity, pk);
-            var computedHash = ComputeHash(entity);
+            string? storedHash = GetHash(entity, pk);
+            string? computedHash = ComputeHash(entity);
             
             return storedHash is null || storedHash != computedHash;
         }
@@ -134,7 +134,7 @@ namespace ORM.Core.Caching
         /// </summary>
         /// <param name="entity"></param>
         /// <returns></returns>
-        private string ComputeHash(object entity)
+        private static string ComputeHash(object entity)
         {
             var type = entity.GetType();
             var table = type.ToTable();
@@ -143,7 +143,7 @@ namespace ORM.Core.Caching
             // internal fields
             foreach (var column in table.Columns)
             {
-                var value = column.GetValue(entity);
+                object? value = column.GetValue(entity);
 
                 if (value is null)
                 {
@@ -155,9 +155,9 @@ namespace ORM.Core.Caching
                     var foreignKey = table.ForeignKeys.First(x => x.LocalColumn.Name == column.Name);
                     var externalField = table.ExternalFields.First(x => x.Table.Type == foreignKey.RemoteTable.Type);
                     var property = table.Type.GetProperties().First(p => p.PropertyType == externalField.Table.Type);
-                    var navigatedEntity = property.GetValue(entity);
+                    object? navigatedEntity = property.GetValue(entity);
                     var navigatedTable = navigatedEntity.GetType().ToTable();
-                    var pk = navigatedTable.PrimaryKey.GetValue(navigatedEntity);
+                    object? pk = navigatedTable.PrimaryKey.GetValue(navigatedEntity);
                     hashString += pk;
                 }
                 else
@@ -170,7 +170,7 @@ namespace ORM.Core.Caching
             foreach (var property in table.Type.GetProperties())
             {
                 var propertyType = property.PropertyType;
-                var value = property.GetValue(entity);
+                object? value = property.GetValue(entity);
 
                 if (propertyType.IsInternalType() || value is null)
                 {
@@ -185,9 +185,9 @@ namespace ORM.Core.Caching
                 {
                     var collection = value as IEnumerable ?? new List<object>();
                     
-                    foreach (var x in collection)
+                    foreach (object? x in collection)
                     {
-                        var xpk = entityTable.PrimaryKey.GetValue(x);
+                        object? xpk = entityTable.PrimaryKey.GetValue(x);
                         hashString += $"{xpk},";
                     }
 
@@ -195,7 +195,7 @@ namespace ORM.Core.Caching
                 }
                 
                 // get primary of single reference
-                var pk = entityTable.PrimaryKey.GetValue(value);
+                object? pk = entityTable.PrimaryKey.GetValue(value);
 
                 if (pk is not null)
                 {
@@ -203,9 +203,9 @@ namespace ORM.Core.Caching
                 }
             }
 
-            var utf8Bytes = Encoding.UTF8.GetBytes(hashString);
-            var hashBytes = SHA256.Create().ComputeHash(utf8Bytes);
-            var hashUtf8String = Encoding.UTF8.GetString(hashBytes);
+            byte[]? utf8Bytes = Encoding.UTF8.GetBytes(hashString);
+            byte[]? hashBytes = SHA256.Create().ComputeHash(utf8Bytes);
+            string? hashUtf8String = Encoding.UTF8.GetString(hashBytes);
             return hashUtf8String;
         }
     }

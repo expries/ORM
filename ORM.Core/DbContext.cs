@@ -8,6 +8,7 @@ using ORM.Core.Interfaces;
 using ORM.Core.Loading;
 using ORM.Core.Models;
 using ORM.Core.Models.Enums;
+using ORM.Core.Models.Exceptions;
 using ORM.Core.Models.Extensions;
 
 namespace ORM.Core
@@ -57,6 +58,11 @@ namespace ORM.Core
         /// <typeparam name="T"></typeparam>
         public void Save<T>(T entity)
         {
+            if (entity is null)
+            {
+                throw new OrmException("Entity is set to null");
+            }
+            
             // Update references on object
             UpdateReferences(entity);
             
@@ -82,9 +88,19 @@ namespace ORM.Core
         /// <returns></returns>
         private object SaveEntity<T>(T entity)
         {
+            if (entity is null)
+            {
+                throw new OrmException("Entity is set to null");
+            }
+            
             // Save entity
             var saveCmd = _commandBuilder.BuildSave(entity);
             object? pk = saveCmd.ExecuteScalar();
+
+            if (pk is null)
+            {
+                throw new OrmException("Primary key was not returned from save");
+            }
                     
             // Update primary key on entity
             var type = entity.GetType();
@@ -94,24 +110,98 @@ namespace ORM.Core
         }
 
         /// <summary>
-        /// Updates references of an entity
+        /// Updates references on an entity
         /// </summary>
         /// <param name="entity"></param>
-        private static void UpdateReferences(object entity)
+        private void UpdateReferences(object entity)
         {
             var entityType = entity.GetType();
             var entityTable = entityType.ToTable();
-            var references = entityTable.GetPropertiesOf(RelationshipType.OneToMany);
+            var oneToManyReferences = entityTable.GetPropertiesOf(RelationshipType.OneToMany);
             
-            foreach (var property in references)
+            // Update one to many references
+            foreach (var property in oneToManyReferences)
             {
-                var navigatedCollection = property.GetValue(entity) as IEnumerable<object> ?? new List<object>();
+                var referenceCollection = property.GetValue(entity) as IEnumerable<object>;
 
-                foreach (var item in navigatedCollection)
+                // if reference collection is not set, initialize it
+                if (referenceCollection is null)
                 {
-                    var itemType = item.GetType();
-                    var navigatedProperty = itemType.GetNavigatedProperty(entityType);
-                    navigatedProperty?.SetValue(item, entity);
+                    var collection = Activator.CreateInstance(property.PropertyType);
+                    referenceCollection = collection as IEnumerable<object>;
+                    property.SetValue(entity, collection);
+                }
+
+                // Safeguard
+                if (referenceCollection is null)
+                {
+                    continue;
+                }
+
+                // Update references to this entity in the items of the reference collections
+                foreach (object reference in referenceCollection)
+                {
+                    var referenceType = reference.GetType();
+                    var navigatedProperty = referenceType.GetNavigatedProperty(entityType);
+                    navigatedProperty?.SetValue(reference, entity);
+                }
+            }
+            
+            var manyToOneReferences = entityTable.GetPropertiesOf(RelationshipType.ManyToOne);
+            
+            // Update many to one references
+            foreach (var property in manyToOneReferences)
+            {
+                object? reference = property.GetValue(entity);
+
+                // If reference is null, throw an error, as its primary key needs to be stored as a foreign key
+                if (reference is null)
+                {
+                    throw new OrmException($"Can't save entity of type {entityType.Name}, because the " +
+                                           $"many-to-one property {property.Name} is set to null. Please first save " +
+                                           $"an {property.PropertyType.Name} entity using " +
+                                           $"{nameof(DbContext)}.{nameof(Save)}() and then set the property.");
+                }
+
+                var referenceType = reference.GetType();
+                var referencePk = referenceType.ToTable().PrimaryKey.GetValue(reference);
+
+                // If the reference is set, but not saved yet, save it
+                if (_cache.Get(referenceType, referencePk) is null)
+                {
+                    SaveEntity(reference);
+                }
+                
+                // Get collection on reference
+                var navigatedProperty = property.PropertyType.GetNavigatedProperty(entityType) ?? throw new OrmException($"Could not find navigated property of type {entityType.Name} on type {property.PropertyType.Name}");
+                var navigatedEnumerable = navigatedProperty.GetValue(reference) as IEnumerable<object>;
+
+                // if collection is null, create it
+                if (navigatedEnumerable is null)
+                {
+                    navigatedEnumerable = Activator.CreateInstance(navigatedProperty.PropertyType) as IEnumerable<object>;
+                    navigatedProperty.SetValue(reference, navigatedEnumerable);
+                }
+                
+                var navigatedList = navigatedEnumerable?.ToList();
+                
+                // If entity is not stored in reference collection, add it
+                if (navigatedList is not null && !navigatedList.Contains(entity))
+                {
+                    navigatedList.Add(entity);
+                    var itemType = navigatedProperty.PropertyType.GetUnderlyingType();
+                    
+                    // Convert list to correct type as List<object> can not be set on the entity
+                    var ofTypeMethod = typeof(Enumerable).GetMethod(nameof(Enumerable.OfType));
+                    var toListMethod = typeof(Enumerable).GetMethod(nameof(Enumerable.ToList));
+                    var typedOfTypeMethod = ofTypeMethod?.MakeGenericMethod(itemType);
+                    var typedToListMethod = toListMethod?.MakeGenericMethod(itemType);
+                    
+                    object? typedEnumerable = typedOfTypeMethod?.Invoke(null, new object?[]{ navigatedList });
+                    object? typedList = typedToListMethod?.Invoke(null, new[] { typedEnumerable });
+                    
+                    // Set property 
+                    navigatedProperty.SetValue(reference, typedList);
                 }
             }
         }
@@ -126,7 +216,7 @@ namespace ORM.Core
             var entityTable = entityType.ToTable();
             var references = entityTable.GetPropertiesOf(RelationshipType.ManyToMany);
             
-            // save many to many references
+            // Save many to many references
             foreach (var property in references)
             {
                 var entries = property.GetValue(entity) as IEnumerable<object> ?? new List<object>();
@@ -211,7 +301,7 @@ namespace ORM.Core
         /// </summary>
         /// <param name="tables"></param>
         /// <returns></returns>
-        private static IEnumerable<Table> GetAllTables(IEnumerable<Table> tables)
+        private static IEnumerable<Table> GetAllTables(IEnumerable<EntityTable> tables)
         {
             var tableList = tables.ToList();
             IEnumerable<Table> allTables = tableList;

@@ -27,7 +27,7 @@ namespace ORM.Core.Interfaces
         /// <param name="type"></param>
         /// <param name="primaryKey"></param>
         /// <returns></returns>
-        public object? Get(Type type, object primaryKey);
+        public object? Get(Type type, object? primaryKey);
 
         /// <summary>
         /// Gets all the entities of a given type from the cache

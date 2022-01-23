@@ -17,11 +17,6 @@ namespace ORM.Linq
     public class QueryProvider : IQueryProvider
     {
         /// <summary>
-        /// Database connection
-        /// </summary>
-        private readonly IDbConnection _connection;
-        
-        /// <summary>
         /// Translates expression trees to sql
         /// </summary>
         private readonly ILinqCommandBuilder _linqCommandBuilder;
@@ -31,9 +26,8 @@ namespace ORM.Linq
         /// </summary>
         private readonly ILazyLoader _lazyLoader;
 
-        public QueryProvider(IDbConnection connection, ILinqCommandBuilder linqCommandBuilder, ILazyLoader lazyLoader)
+        public QueryProvider(ILinqCommandBuilder linqCommandBuilder, ILazyLoader lazyLoader)
         {
-            _connection = connection;
             _linqCommandBuilder = linqCommandBuilder;
             _lazyLoader = lazyLoader;
         }
@@ -47,7 +41,7 @@ namespace ORM.Linq
         {
             var elementType = expression.Type.GetElementTypeCustom();
             var typedDbSet = typeof(DbSet<>).MakeGenericType(elementType);
-            var dbSet = Activator.CreateInstance(typedDbSet, this, expression);
+            object? dbSet = Activator.CreateInstance(typedDbSet, this, expression);
 
             if (dbSet is not IQueryable queryableDbSet)
             {
