@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Data;
 using System.Linq;
 using System.Text;
-using Npgsql;
 using ORM.Core.Interfaces;
 using ORM.Core.Models;
 using ORM.Core.Models.Enums;
@@ -109,6 +108,11 @@ namespace ORM.Postgres.SqlDialect
         /// <returns></returns>
         public IDbCommand BuildSave<T>(T entity)
         {
+            if (entity is null)
+            {
+                throw new OrmException("Can't save entity that is set to null.");
+            }
+            
             var type = entity.GetType();
             var table = type.ToTable();
             
@@ -338,7 +342,7 @@ namespace ORM.Postgres.SqlDialect
                 .Append($"WHERE \"{manyTable.Name}\".\"{manyTable.PrimaryKey.Name}\" = @{pkParameter.Name}");
 
             var query = CreateQuery(pkParameter);
-            return CreateCommand(query, newConnection: true);
+            return CreateCommand(query);
         }
 
         /// <summary>
@@ -380,9 +384,9 @@ namespace ORM.Postgres.SqlDialect
                 .Append($"ON t.\"{oneTable.PrimaryKey.Name}\" = \"{manyTable.Name}\".\"{fk.LocalColumn.Name}\"")
                 .Append(' ')
                 .Append($"WHERE t.\"{oneTable.PrimaryKey.Name}\" = @{pkParameter.Name}");
-
+            
             var query = CreateQuery(pkParameter);
-            return CreateCommand(query, newConnection: true);
+            return CreateCommand(query);
         }
 
         /// <summary>
@@ -425,7 +429,7 @@ namespace ORM.Postgres.SqlDialect
                 .Append($"ON t.\"{fkTableB.LocalColumn.Name}\" = \"{manyBTable.Name}\".\"{manyBTable.PrimaryKey.Name}\"");
 
             var query = CreateQuery();
-            return CreateCommand(query, newConnection: true);
+            return CreateCommand(query);
         }
 
         private void WriteDropTable(Table table)
@@ -532,28 +536,14 @@ namespace ORM.Postgres.SqlDialect
         }
 
         /// <summary>
-        /// 
-        /// </summary>
-        /// <returns></returns>
-        private static IDbConnection CreateConnection()
-        {
-            var connection = new NpgsqlConnection("Server=localhost;Port=5434;User Id=postgres;Password=postgres;");
-            connection.Open();
-            return connection;
-        }
-        
-        /// <summary>
         /// Creates an IDbCommand for a given query.
         /// </summary>
         /// <param name="query"></param>
-        /// <param name="newConnection"></param>
         /// <returns></returns>
-        private IDbCommand CreateCommand(Query query, bool newConnection = false)
+        private IDbCommand CreateCommand(Query query)
         {
-            var connection = newConnection ? CreateConnection() : _connection;
-            
             // create command and set sql
-            var cmd = connection.CreateCommand();
+            var cmd = _connection.CreateCommand();
             cmd.CommandText = query.Sql;
             
             // add parameters to command
@@ -569,7 +559,8 @@ namespace ORM.Postgres.SqlDialect
         }
         
         /// <summary>
-        /// Creates a query consisting of the current SQL statement and the given parameters
+        /// Creates a query consisting of the SQL written to the string-builder and the given parameters.
+        /// Empties the SQL string builder.
         /// </summary>
         /// <param name="parameters"></param>
         /// <returns></returns>
@@ -580,7 +571,8 @@ namespace ORM.Postgres.SqlDialect
         }
 
         /// <summary>
-        /// Creates a query consisting of the current SQL statement and a given parameters
+        /// Creates a query consisting of the SQL written to the string-builder and the given parameters.
+        /// Empties the SQL string builder.
         /// </summary>
         /// <param name="parameters"></param>
         /// <returns></returns>
@@ -593,7 +585,8 @@ namespace ORM.Postgres.SqlDialect
         }
 
         /// <summary>
-        /// Create a parameter for a value
+        /// Create a parameter for a value.
+        /// The parameter's name is automatically assigned.
         /// </summary>
         /// <param name="value"></param>
         /// <returns></returns>

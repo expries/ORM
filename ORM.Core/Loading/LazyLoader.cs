@@ -6,7 +6,8 @@ namespace ORM.Core.Loading
 {
     /// <summary>
     /// Loads entities connected by a relationship from the database.
-    /// Lazy loading is then achieved by creating a lazy proxy that stores these functions in its backing fields
+    /// Lazy loading is then achieved by creating a lazy proxy that stores the methods of this class
+    /// in its backing fields
     /// </summary>
     public class LazyLoader : ILazyLoader
     {

@@ -15,10 +15,4 @@
       <ProjectReference Include="..\ORM.Postgres\ORM.Postgres.csproj" />
     </ItemGroup>
 
-    <ItemGroup>
-      <PackageReference Include="Newtonsoft.Json" Version="13.0.1" />
-      <PackageReference Include="Npgsql" Version="6.0.0" />
-      <PackageReference Include="System.Data.SQLite" Version="1.0.115.5" />
-    </ItemGroup>
-
 </Project>

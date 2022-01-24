@@ -1,6 +1,9 @@
 ﻿using System;
 using System.Linq;
+using ORM.Application.DbContexts;
 using ORM.Application.Entities;
+using ORM.Core;
+using ORM.Postgres.Extensions;
 
 namespace ORM.Application
 {
@@ -13,8 +16,15 @@ namespace ORM.Application
     {
         static void Main(string[] args)
         {
-            var ctx = DbFactory.CreateDbContext();
+            DbContext.Configure(options =>
+            {
+                options.UseStateTrackingCache();
+                options.UsePostgres("Server=localhost;Port=5434;User Id=postgres;Password=postgres;");
+            });
+
+            var ctx = new ShopContext();
             ctx.EnsureCreated();
+            
 
             Show.SaveObject.ShowBasic();
             Show.SaveObject.ShowWithManyToOne();

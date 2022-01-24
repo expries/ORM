@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Data;
 using System.Linq;
 using System.Reflection;
-using ORM.Core.Caching;
+using ORM.Core.Configuration;
 using ORM.Core.Interfaces;
 using ORM.Core.Loading;
 using ORM.Core.Models;
@@ -22,21 +22,43 @@ namespace ORM.Core
         /// Builds commands to be executed
         /// </summary>
         private readonly ICommandBuilder _commandBuilder;
-
+        
         /// <summary>
-        /// Caches entities
+        /// Builds commands to be executed
+        /// </summary>
+        private readonly IQueryProvider _queryProvider;
+        
+        /// <summary>
+        /// Builds commands to be executed
         /// </summary>
         private readonly ICache _cache;
 
-        public DbContext(ICommandBuilder dialect, ICache cache)
+        private static OptionsBuilder _options = new OptionsBuilder();
+
+        public DbContext()
         {
-            _commandBuilder = dialect;
-            _cache = cache;
+            _cache = _options.Cache;
+            _commandBuilder = _options.CommandBuilder ?? throw new OrmException("No command builder is defined. Please configure a database by writing for example DbContext.Configure(c => c.UsePostgres());");
+            _queryProvider = _options.QueryProvider ?? throw new OrmException("No command builder is defined. Please configure a database by writing for example DbContext.Configure(c => c.UsePostgres());");
+            InitializeDbContext();
+        }
+        
+        public static void Configure(Action<OptionsBuilder> configure)
+        {
+            var builder = new OptionsBuilder();
+            configure(builder);
+            _options = builder;
         }
 
-        protected DbContext(ICommandBuilder dialect) 
-            : this(dialect, new EntityCache())
+        private void InitializeDbContext()
         {
+            var dbSets = GetDbSets();
+
+            foreach (var dbSetProperty in dbSets)
+            {
+                object? dbSet = Activator.CreateInstance(dbSetProperty.PropertyType, _queryProvider);
+                dbSetProperty.SetValue(this, dbSet);
+            }
         }
 
         /// <summary>
@@ -338,6 +360,16 @@ namespace ORM.Core
             }
 
             return entities;
+        }
+
+        private List<PropertyInfo> GetDbSets()
+        {
+            var properties = GetType().GetProperties();
+
+            var dbSets = properties.Where(x =>
+                x.PropertyType.IsGenericType && x.PropertyType.GetGenericTypeDefinition() == typeof(DbSet<>));
+
+            return dbSets.ToList();
         }
         
         /// <summary>

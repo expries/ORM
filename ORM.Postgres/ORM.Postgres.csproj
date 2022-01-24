@@ -11,6 +11,7 @@
       <ProjectReference Include="..\ORM.Linq.Interfaces\ORM.Linq.Interfaces.csproj" />
       <ProjectReference Include="..\ORM.Linq\ORM.Linq.csproj" />
       <ProjectReference Include="..\ORM.Postgres.Interfaces\ORM.Postgres.Interfaces.csproj" />
+      <ProjectReference Include="..\ORM.Postgres.Linq\ORM.Postgres.Linq.csproj" />
     </ItemGroup>
 
 </Project>

@@ -6,7 +6,7 @@ namespace ORM.Application.Show
     {
         public static void Show()
         {
-            var dbContext = DbFactory.CreateDbContext();
+            var dbContext = new ShopContext();
             dbContext.EnsureCreated();
         }
     }

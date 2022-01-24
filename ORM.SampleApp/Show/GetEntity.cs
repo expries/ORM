@@ -8,7 +8,7 @@ namespace ORM.Application.Show
     {
         public static void GetAuthor()
         {
-            var dbContext = DbFactory.CreateDbContext();
+            var dbContext = new ShopContext();
             
             var author = new Author
             {

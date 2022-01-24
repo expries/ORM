@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using ORM.Application.DbContexts;
 using ORM.Application.Entities;
 using ORM.Core;
 
@@ -6,7 +7,7 @@ namespace ORM.Application.Show
 {
     public static class SaveObject
     {
-        private static DbContext DbContext = DbFactory.CreateDbContext();
+        private static readonly DbContext DbContext = new ShopContext();
         
         public static void ShowBasic()
         {

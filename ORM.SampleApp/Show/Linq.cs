@@ -1,6 +1,6 @@
 ﻿using System;
 using System.Linq;
-using ORM.Application.Entities;
+using ORM.Application.DbContexts;
 
 namespace ORM.Application.Show
 {
@@ -8,8 +8,8 @@ namespace ORM.Application.Show
     {
         public static void ShowToList()
         {
-            var dbSet = DbFactory.CreateDbSet<Product>();
-            var products = dbSet.ToList();
+            var dbContext = new ShopContext();
+            var products = dbContext.Products.ToList();
             
             Console.WriteLine($"Found {products.Count} products:");
             
