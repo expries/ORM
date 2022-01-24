@@ -6,7 +6,7 @@ using ORM.Core.Models;
 namespace ORM.Core.Interfaces
 {
     /// <summary>
-    /// Builds commands for database operations
+    /// Builds database commands that execute against the current database connection
     /// </summary>
     public interface ICommandBuilder
     {

@@ -12,6 +12,9 @@ using ORM.Linq.Interfaces;
 
 namespace ORM.Postgres.Linq
 {
+    /// <summary>
+    /// Translates expression trees to sql
+    /// </summary>
     public class LinqCommandBuilder : ExpressionVisitor, ILinqCommandBuilder
     {
         private readonly StringBuilder _sql = new StringBuilder();
@@ -25,6 +28,11 @@ namespace ORM.Postgres.Linq
             _connection = connection;
         }
 
+        /// <summary>
+        /// Translates expression tree to SQL
+        /// </summary>
+        /// <param name="node"></param>
+        /// <returns></returns>
         public IDbCommand Translate(Expression? node)
         {
             _sql.Clear();
@@ -41,6 +49,11 @@ namespace ORM.Postgres.Linq
             return cmd;
         }
 
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="node"></param>
+        /// <returns></returns>
         protected override Expression VisitBinary(BinaryExpression node)
         {
             string operatorSql = GetSqlOperator(node.NodeType);

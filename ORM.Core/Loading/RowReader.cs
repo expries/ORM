@@ -63,24 +63,24 @@ namespace ORM.Core.Loading
                 return false;
             }
 
-            // Read the schema once
+            // Read the schema if it hasn't been read yet
             if (_schema is null)
             {
                 ReadColumnSchema();
             }
-
-            // Read internal type (e.g. primitive types)
-            if (typeof(T).IsInternalType())
+            
+            // Read value type
+            if (typeof(T).IsValueType())
             {
-                ReadInternalType();
+                ReadValueType();
             }
-            // Read entities
+            // Read complex type (e.g. entity)
             else
             {
                 // Create a lazy proxy for lazy-loading relationship properties
                 Current = LazyProxyFactory.CreateProxy<T>();
-                // Fill the object with data
-                ReadExternalType();
+                // Fill the 'Current' object with data
+                ReadComplexType();
             }
 
             return true;
@@ -118,10 +118,10 @@ namespace ORM.Core.Loading
         }
 
         /// <summary>
-        /// Reads an internal type
+        /// Reads a primitive type
         /// </summary>
         /// <exception cref="ObjectMappingException"></exception>
-        private void ReadInternalType()
+        private void ReadValueType()
         {
             if (_schema.Count < 1)
             {
@@ -153,22 +153,22 @@ namespace ORM.Core.Loading
         /// <summary>
         /// Reads an external type (e.g. an entity)
         /// </summary>
-        private void ReadExternalType()
+        private void ReadComplexType()
         {
             var properties = typeof(T).GetProperties();
 
-            var internalProperties = properties.Where(p => 
-                p.PropertyType.IsInternalType());
+            var valueTypeProperties = properties.Where(p => 
+                p.PropertyType.IsValueType());
 
-            var externalProperties = properties.Where(p =>
-                !p.PropertyType.IsInternalType());
+            var complexTypeProperties = properties.Where(p =>
+                !p.PropertyType.IsValueType());
 
-            foreach (var property in internalProperties)
+            foreach (var property in valueTypeProperties)
             {
                 SetInternalProperty(property);
             }
 
-            foreach (var property in externalProperties)
+            foreach (var property in complexTypeProperties)
             {
                 var entityType = property.PropertyType.GetUnderlyingType();
                 SetExternalProperty(property, entityType);
@@ -228,16 +228,16 @@ namespace ORM.Core.Loading
 
             if (loadMethodInfo is null)
             {
-                throw new OrmException($"Failed to find load method for relationship {relationship}");
+                throw new ObjectMappingException($"Failed to find load method for relationship {relationship}");
             }
-            
+
             // Build lazy loading method
             var loadMethod = loadMethodInfo.MakeGenericMethod(typeof(T), externalType);
             object? lazyResult = loadMethod.Invoke(this, new object[] { Current });
 
             // Get lazy backing field of proxy and write lazy result to it
-            var fields = Current.GetType().GetFields(flags);
-            var backingField = fields.FirstOrDefault(f => f.Name == $"_lazy{property.Name}");
+            var fields = Current?.GetType().GetFields(flags);
+            var backingField = fields?.FirstOrDefault(f => f.Name == $"_lazy{property.Name}");
             backingField?.SetValue(Current, lazyResult);
         }
 

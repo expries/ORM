@@ -2,6 +2,9 @@ using ORM.Postgres.Interfaces;
 
 namespace ORM.Postgres.DataTypes
 {
+    /// <summary>
+    /// Base class for postgres data types that have a maximum character length
+    /// </summary>
     internal class PostgresLengthRestrictedType : PostgresDataType, IDbMaxLengthDbType
     {
         public int Length { get; set; }

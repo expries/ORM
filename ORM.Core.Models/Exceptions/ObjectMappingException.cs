@@ -2,7 +2,7 @@
 
 namespace ORM.Core.Models.Exceptions
 {
-    public class ObjectMappingException : Exception
+    public class ObjectMappingException : OrmException
     {
         public ObjectMappingException(string message) : base(message)
         {

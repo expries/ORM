@@ -7,8 +7,16 @@ using ORM.Postgres.SqlDialect;
 
 namespace ORM.Postgres.Extensions
 {
+    /// <summary>
+    /// Extends the options builder for configuring a database context.
+    /// </summary>
     public static class OptionsBuilderExtensions
     {
+        /// <summary>
+        /// Configure the database context to use a postgres database.
+        /// </summary>
+        /// <param name="options"></param>
+        /// <param name="connectionString"></param>
         public static void UsePostgres(this OptionsBuilder options, string connectionString)
         {
             var connection = new NpgsqlConnection(connectionString);

@@ -172,7 +172,7 @@ namespace ORM.Core.Caching
                 var propertyType = property.PropertyType;
                 object? value = property.GetValue(entity);
 
-                if (propertyType.IsInternalType() || value is null)
+                if (propertyType.IsValueType() || value is null)
                 {
                     continue;
                 }

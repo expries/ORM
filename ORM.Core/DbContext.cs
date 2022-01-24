@@ -19,23 +19,26 @@ namespace ORM.Core
     public class DbContext : IDbContext
     {
         /// <summary>
-        /// Builds commands to be executed
+        /// Builds commands that are executed against a database connection
         /// </summary>
         private readonly ICommandBuilder _commandBuilder;
         
         /// <summary>
-        /// Builds commands to be executed
+        /// Executes LINQ expressions against a database connection
         /// </summary>
         private readonly IQueryProvider _queryProvider;
         
         /// <summary>
-        /// Builds commands to be executed
+        /// Cache for storing entities
         /// </summary>
         private readonly ICache _cache;
 
+        /// <summary>
+        /// Configuration of the current database context
+        /// </summary>
         private static OptionsBuilder _options = new OptionsBuilder();
 
-        public DbContext()
+        protected DbContext()
         {
             _cache = _options.Cache;
             _commandBuilder = _options.CommandBuilder ?? throw new OrmException("No command builder is defined. Please configure a database by writing for example DbContext.Configure(c => c.UsePostgres());");
@@ -43,22 +46,15 @@ namespace ORM.Core
             InitializeDbContext();
         }
         
+        /// <summary>
+        /// Apply a configuration to this database context.
+        /// </summary>
+        /// <param name="configure"></param>
         public static void Configure(Action<OptionsBuilder> configure)
         {
             var builder = new OptionsBuilder();
             configure(builder);
             _options = builder;
-        }
-
-        private void InitializeDbContext()
-        {
-            var dbSets = GetDbSets();
-
-            foreach (var dbSetProperty in dbSets)
-            {
-                object? dbSet = Activator.CreateInstance(dbSetProperty.PropertyType, _queryProvider);
-                dbSetProperty.SetValue(this, dbSet);
-            }
         }
 
         /// <summary>
@@ -292,6 +288,20 @@ namespace ORM.Core
             var cmd = _commandBuilder.BuildDeleteById<T>(pk);
             cmd.ExecuteNonQuery();
         }
+        
+        /// <summary>
+        /// Initialize the DBSets of this instance.
+        /// </summary>
+        private void InitializeDbContext()
+        {
+            var dbSets = GetDbSets();
+
+            foreach (var dbSetProperty in dbSets)
+            {
+                object? dbSet = Activator.CreateInstance(dbSetProperty.PropertyType, _queryProvider);
+                dbSetProperty.SetValue(this, dbSet);
+            }
+        }
 
         /// <summary>
         /// Create an object reader to create objects usign a data reader
@@ -362,12 +372,17 @@ namespace ORM.Core
             return entities;
         }
 
+        /// <summary>
+        /// Get the db sets of the current db context.
+        /// </summary>
+        /// <returns></returns>
         private List<PropertyInfo> GetDbSets()
         {
             var properties = GetType().GetProperties();
 
             var dbSets = properties.Where(x =>
-                x.PropertyType.IsGenericType && x.PropertyType.GetGenericTypeDefinition() == typeof(DbSet<>));
+                x.PropertyType.IsGenericType && 
+                x.PropertyType.GetGenericTypeDefinition() == typeof(DbSet<>));
 
             return dbSets.ToList();
         }

@@ -9,6 +9,6 @@
       <ProjectReference Include="..\ORM.Core.Interfaces\ORM.Core.Interfaces.csproj" />
       <ProjectReference Include="..\ORM.Core.Models\ORM.Core.Models.csproj" />
       <ProjectReference Include="..\ORM.Linq.Interfaces\ORM.Linq.Interfaces.csproj" />
-    </ItemGroup>
+    </ItemGroup>    
 
 </Project>

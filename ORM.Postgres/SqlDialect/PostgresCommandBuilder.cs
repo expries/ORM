@@ -12,14 +12,30 @@ using ORM.Postgres.Interfaces;
 
 namespace ORM.Postgres.SqlDialect
 {
+    /// <summary>
+    /// Builds database commands that execute against the current database connection
+    /// </summary>
     public class PostgresCommandBuilder : ICommandBuilder
     {
+        /// <summary>
+        /// Maps internal c# types to postgres data types
+        /// </summary>
         private readonly IDbTypeMapper _typeMapper;
         
+        /// <summary>
+        /// Holds the command's current text (its SQL)
+        /// </summary>
         private readonly StringBuilder _sql = new StringBuilder();
 
+        /// <summary>
+        /// The current database connection that all created commands target
+        /// </summary>
         private readonly IDbConnection _connection;
 
+        /// <summary>
+        /// Number of parameters created for the current command.
+        /// This is used for generating unique parameter names.
+        /// </summary>
         private int _parameterCount;
 
         public PostgresCommandBuilder(IDbConnection connection, IDbTypeMapper typeMapper)
@@ -29,7 +45,7 @@ namespace ORM.Postgres.SqlDialect
         }
 
         /// <summary>
-        /// Builds a commands to create the given list of tables in a database
+        /// Builds a command to create the given list of tables in a database
         /// </summary>
         /// <param name="tables"></param>
         /// <returns></returns>

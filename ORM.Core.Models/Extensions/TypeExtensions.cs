@@ -26,7 +26,7 @@ namespace ORM.Core.Models.Extensions
         /// </summary>
         /// <param name="type"></param>
         /// <returns></returns>
-        public static bool IsInternalType(this Type type)
+        public static bool IsValueType(this Type type)
         {
             return type.IsValueType || type == typeof(string);
         }
@@ -38,7 +38,7 @@ namespace ORM.Core.Models.Extensions
         /// <returns></returns>
         public static bool IsExternalType(this Type type)
         {
-            return !type.IsInternalType();
+            return !type.IsValueType();
         }
 
         /// <summary>

@@ -92,14 +92,14 @@ namespace ORM.Core.Models
         /// <exception cref="InvalidEntityException"></exception>
         private void ReadType(Type entityType)
         {
-            if (entityType.IsInternalType())
+            if (entityType.IsValueType())
             {
                 throw new InvalidEntityException($"Type {entityType.Name} can not be represented by " +
                                                  $"a table. Please provide a complex type.");
             }
 
             var properties = entityType.GetProperties();
-            var columnProperties = properties.Where(p => p.PropertyType.IsInternalType());
+            var columnProperties = properties.Where(p => p.PropertyType.IsValueType());
 
             // process properties which types can be converted into table columns
             foreach (var property in columnProperties)

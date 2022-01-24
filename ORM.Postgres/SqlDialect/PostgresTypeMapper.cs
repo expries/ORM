@@ -6,8 +6,14 @@ using ORM.Postgres.Interfaces;
 
 namespace ORM.Postgres.SqlDialect
 {
+    /// <summary>
+    /// Maps c# types to postgres data types
+    /// </summary>
     public class PostgresDataTypeMapper : IDbTypeMapper
     {
+        /// <summary>
+        /// Type mapping dictionary
+        /// </summary>
         private static readonly Dictionary<Type, Func<IDbType>> TypeMap = new Dictionary<Type, Func<IDbType>>
         {
             [typeof(string)]   = () => new PostgresVarchar(PostgresVarchar.DefaultLength),
@@ -16,11 +22,17 @@ namespace ORM.Postgres.SqlDialect
             [typeof(DateTime)] = () => new PostgresDateTime(),
         };
 
+        /// <summary>
+        /// Maps an internal type to a postgres data type
+        /// </summary>
+        /// <param name="type"></param>
+        /// <returns></returns>
+        /// <exception cref="UnknownTypeException"></exception>
         public IDbType Map(Type type)
         {
             if (!TypeMap.ContainsKey(type))
             {
-                throw new TypeNotConvertableException($"Type {type.Name} is not convertable to a postgres type");
+                throw new UnknownTypeException($"Type {type.Name} is not convertable to a postgres type");
             }
 
             var postgresType = TypeMap[type].Invoke();
