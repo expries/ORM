@@ -1,5 +1,4 @@
-﻿using System;
-using System.Linq;
+﻿using System.Linq;
 using ORM.Application.DbContexts;
 using ORM.Application.Entities;
 using ORM.Core;
@@ -7,11 +6,6 @@ using ORM.Postgres.Extensions;
 
 namespace ORM.Application
 {
-    public class X
-    {
-        public Lazy<string> Name { get; set; }
-    }
-    
     class Program
     {
         static void Main(string[] args)

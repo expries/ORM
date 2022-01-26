@@ -145,17 +145,11 @@ namespace ORM.Core
                 // if reference collection is not set, initialize it
                 if (referenceCollection is null)
                 {
-                    var collection = Activator.CreateInstance(property.PropertyType);
-                    referenceCollection = collection as IEnumerable<object>;
+                    object? collection = Activator.CreateInstance(property.PropertyType);
+                    referenceCollection = collection as IEnumerable<object> ?? new List<object>();
                     property.SetValue(entity, collection);
                 }
-
-                // Safeguard
-                if (referenceCollection is null)
-                {
-                    continue;
-                }
-
+                
                 // Update references to this entity in the items of the reference collections
                 foreach (object reference in referenceCollection)
                 {
@@ -166,7 +160,7 @@ namespace ORM.Core
             }
             
             var manyToOneReferences = entityTable.GetPropertiesOf(RelationshipType.ManyToOne);
-            
+
             // Update many to one references
             foreach (var property in manyToOneReferences)
             {
@@ -182,7 +176,8 @@ namespace ORM.Core
                 }
 
                 var referenceType = reference.GetType();
-                var referencePk = referenceType.ToTable().PrimaryKey.GetValue(reference);
+                var referenceTable = referenceType.ToTable();
+                object? referencePk = referenceTable.PrimaryKey.GetValue(reference);
 
                 // If the reference is set, but not saved yet, save it
                 if (_cache.Get(referenceType, referencePk) is null)

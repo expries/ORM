@@ -5,7 +5,6 @@ using System.Linq;
 using System.Text;
 using ORM.Core.Interfaces;
 using ORM.Core.Models;
-using ORM.Core.Models.Enums;
 using ORM.Core.Models.Exceptions;
 using ORM.Core.Models.Extensions;
 using ORM.Postgres.Interfaces;
@@ -136,30 +135,20 @@ namespace ORM.Postgres.SqlDialect
             var columnsForParameters = new Dictionary<QueryParameter, Column>();
             
             // Get parameters for internal fields 
-            foreach (var column in table.Columns)
+            foreach (var column in table.Columns.Where(x => !x.IsForeignKey && x.IsMapped))
             {
-                if (column.IsMapped && !column.IsForeignKey)
-                {
-                    object? value = column.GetValue(entity);
-                    var parameter = CreateParameter(value);
-                    columnsForParameters[parameter] = column;
-                    parameters.Add(parameter);
-                }
+                object? value = column.GetValue(entity);
+                var parameter = CreateParameter(value);
+                columnsForParameters[parameter] = column;
+                parameters.Add(parameter);
             }
             
-            var manyToOne = table.GetPropertiesOf(RelationshipType.ManyToOne);
-            
             // Add foreign key parameters
-            foreach (var property in manyToOne)
+            foreach (var column in table.Columns.Where(x => x.IsForeignKey))
             {
-                var propertyType = property.PropertyType.GetUnderlyingType();
-                var foreignKey = table.ForeignKeys.First(fk => fk.RemoteTable.Type == propertyType);
-
-                object? value = property.GetValue(entity);
-                object? primaryKey = GetPrimaryKey(value);
-                
-                var fkParameter = CreateParameter(primaryKey);
-                columnsForParameters[fkParameter] = foreignKey.LocalColumn;
+                object? pk = column.GetValue(entity);
+                var fkParameter = CreateParameter(pk);
+                columnsForParameters[fkParameter] = column;
                 parameters.Add(fkParameter);
             }
 
@@ -242,8 +231,7 @@ namespace ORM.Postgres.SqlDialect
             
             // get foreign key that points to entity types table
             var fkColumnForEntityTable = fkTable.ForeignKeys
-                .First(fk => fk.RemoteTable.Name == entityTable.Name)
-                .LocalColumn;
+                .First(fk => fk.RemoteTable.Name == entityTable.Name);
             
             object? primaryKey = entityTable.PrimaryKey.GetValue(entity);
             var primaryKeyParameter = CreateParameter(primaryKey);
@@ -251,7 +239,7 @@ namespace ORM.Postgres.SqlDialect
             _sql
                 .Append($"DELETE FROM \"{fkTable.Name}\"")
                 .Append(' ')
-                .Append($"WHERE \"{fkColumnForEntityTable.Name}\" = @{primaryKeyParameter.Name}")
+                .Append($"WHERE \"{fkColumnForEntityTable.LocalColumn.Name}\" = @{primaryKeyParameter.Name}")
                 .Append(' ')
                 .Append($"{Environment.NewLine}");
 
@@ -610,19 +598,6 @@ namespace ORM.Postgres.SqlDialect
         {
             string parameterName = $"p{++_parameterCount}";
             return new QueryParameter(parameterName, value);
-        }
-        
-        /// <summary>
-        /// Gets the primary key of an entity
-        /// </summary>
-        /// <param name="value"></param>
-        /// <returns></returns>
-        private static object? GetPrimaryKey(object? value)
-        {
-            var type = value?.GetType();
-            var table = type?.ToTable();
-            var pkColumn = table?.PrimaryKey;
-            return pkColumn?.GetValue(value);
         }
     }
 }

@@ -32,8 +32,8 @@ namespace ORM.Core.Models
             TableB = order ? tableB : tableA;
 
             // Set columns with foreign key constraint
-            FkColumnA = new Column($"fk_{TableA.PrimaryKey.Name}", TableA.PrimaryKey.Type);
-            FkColumnB = new Column($"fk_{TableB.PrimaryKey.Name}", TableA.PrimaryKey.Type);
+            FkColumnA = new Column($"fk_{TableA.PrimaryKey.Name}", TableA.PrimaryKey.Type, this);
+            FkColumnB = new Column($"fk_{TableB.PrimaryKey.Name}", TableA.PrimaryKey.Type, this);
             Columns.Add(FkColumnA);
             Columns.Add(FkColumnB);
             

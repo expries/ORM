@@ -49,17 +49,6 @@ namespace ORM.Core.Models
             Type = entityType;
             ReadType(entityType);
         }
-        
-        /// <summary>
-        /// Get the property of the entity type that corresponds to a given column
-        /// </summary>
-        /// <param name="column"></param>
-        /// <returns></returns>
-        public PropertyInfo? GetPropertyForColumn(Column column)
-        {
-            var properties = Type.GetProperties();
-            return properties.FirstOrDefault(p => new Column(p).Name == column.Name);
-        }
 
         /// <summary>
         /// Get the properties that form a given relationship with the entity type 
@@ -101,13 +90,13 @@ namespace ORM.Core.Models
             var properties = entityType.GetProperties();
             var columnProperties = properties.Where(p => p.PropertyType.IsValueType());
 
-            // process properties which types can be converted into table columns
+            // Process properties which types can be converted into table columns
             foreach (var property in columnProperties)
             {
                 AddColumn(property);
             }
 
-            // check if entity has a mandatory primary key column
+            // Check if entity has a mandatory primary key column
             try
             {
                 var pk = Columns.SingleOrDefault(c => c.IsPrimaryKey);
@@ -118,7 +107,7 @@ namespace ORM.Core.Models
                 throw new InvalidEntityException($"Type {Type.Name} is not allowed to have more than one primary key");
             }
 
-            // process properties which are of an entity type
+            // Process properties which are of an entity type
             var externalFieldProperties = properties.Where(p => p.PropertyType.IsExternalType());
 
             foreach (var property in externalFieldProperties)
@@ -137,25 +126,25 @@ namespace ORM.Core.Models
             var type = property.PropertyType;
             var entityType = type.GetUnderlyingType();
             var entityTable = GetEntityTable(entityType);
-            
-            if (HasOneToOneRelationship(type, entityType))
-            {
-                AddOneToOne(entityTable);
-            }
+            var relationship = GetRelationship(type, entityType);
 
-            if (HasOneToManyRelationship(type, entityType))
+            switch (relationship)
             {
-                AddOneToMany(entityTable);
-            }
-            
-            if (HasManyToOneRelationship(type, entityType))
-            {
-                AddManyToOne(entityTable);
-            }
-            
-            if (HasManyToManyRelationship(type, entityType) && !CalledByTable(entityType))
-            {
-                AddManyToMany(entityTable);
+                case RelationshipType.OneToOne:
+                    AddOneToOne(entityTable);
+                    break;
+                case RelationshipType.OneToMany:
+                    AddOneToMany(entityTable);
+                    break;
+                case RelationshipType.ManyToOne:
+                    AddManyToOne(entityTable);
+                    break;
+                case RelationshipType.ManyToMany:
+                    if (!CalledByTable(entityType)) AddManyToMany(entityTable);
+                    break;
+                case RelationshipType.None:
+                default:
+                    throw new OrmException("Could not find relationship between two types.");
             }
         }
         
@@ -210,105 +199,25 @@ namespace ORM.Core.Models
         }
 
         /// <summary>
-        /// Check if the relationship between two types is one-to-one
+        /// Get the relationship between two types
         /// </summary>
         /// <param name="propertyType"></param>
         /// <param name="entityType"></param>
         /// <returns></returns>
-        /// <exception cref="InvalidEntityException"></exception>
-        private bool HasOneToOneRelationship(Type propertyType, Type entityType)
+        private RelationshipType GetRelationship(Type propertyType, Type entityType)
         {
-            if (propertyType.IsCollectionOfOneType())
-            {
-                return false;
-            }
+            bool propertyIsACollection = propertyType.IsCollectionOfOneType();
+            var navigatedType = entityType.GetNavigatedProperty(Type)?.PropertyType;
+            bool navigatedPropertyIsACollection = navigatedType?.IsCollectionOfOneType() ?? false;
             
-            var navigatedProperty = propertyType.GetNavigatedProperty(Type);
+            if (propertyIsACollection)
+            {
+                return navigatedPropertyIsACollection ? RelationshipType.ManyToMany : RelationshipType.OneToMany;
+            }
 
-            if (navigatedProperty is null)
-            {
-                throw new InvalidEntityException($"Entity {entityType.Name} does not have navigated property " +
-                                                 $"for type {Type.Name}, can't resolve relationship.");
-            }
-            
-            return !navigatedProperty.PropertyType.IsCollectionOfOneType();
+            return navigatedPropertyIsACollection ? RelationshipType.ManyToOne : RelationshipType.OneToOne;
         }
 
-        /// <summary>
-        /// Check if the relationship between two types is one-to-many
-        /// </summary>
-        /// <param name="propertyType"></param>
-        /// <param name="entityType"></param>
-        /// <returns></returns>
-        /// <exception cref="InvalidEntityException"></exception>
-        private bool HasOneToManyRelationship(Type propertyType, Type entityType)
-        {
-            if (!propertyType.IsCollectionOfOneType())
-            {
-                return false;
-            }
-            
-            var navigatedProperty = entityType.GetNavigatedProperty(Type);
-
-            if (navigatedProperty is null)
-            {
-                throw new InvalidEntityException($"Entity {entityType.Name} does not have navigated property " +
-                                                 $"for type {Type.Name}, can't resolve relationship.");
-            }
-            
-            return !navigatedProperty.PropertyType.IsCollectionOfOneType();
-        }
-        
-        /// <summary>
-        /// Check if the relationship between two types is many-to-one
-        /// </summary>
-        /// <param name="propertyType"></param>
-        /// <param name="entityType"></param>
-        /// <returns></returns>
-        /// <exception cref="InvalidEntityException"></exception>
-        private bool HasManyToOneRelationship(Type propertyType, Type entityType)
-        {
-            if (propertyType.IsCollectionOfOneType())
-            {
-                return false;
-            }
-            
-            var navigatedProperty = entityType.GetNavigatedProperty(Type);
-
-            if (navigatedProperty is null)
-            {
-                throw new InvalidEntityException($"Entity {entityType.Name} does not have navigated property " +
-                                                 $"for type {Type.Name}, can't resolve relationship.");
-            }
-            
-            return navigatedProperty.PropertyType.IsCollectionOfOneType();
-        }
-
-        /// <summary>
-        /// Check if the relationship between two types is many-to-many
-        /// </summary>
-        /// <param name="propertyType"></param>
-        /// <param name="entityType"></param>
-        /// <returns></returns>
-        /// <exception cref="InvalidEntityException"></exception>
-        private bool HasManyToManyRelationship(Type propertyType, Type entityType)
-        {
-            if (!propertyType.IsCollectionOfOneType())
-            {
-                return false;
-            }
-            
-            var navigatedProperty = entityType.GetNavigatedProperty(Type);
-
-            if (navigatedProperty is null)
-            {
-                throw new InvalidEntityException($"Entity {entityType.Name} does not have navigated property " +
-                                                 $"for type {Type.Name}, can't resolve relationship.");
-            }
-            
-            return navigatedProperty.PropertyType.IsCollectionOfOneType();
-        }
-        
         /// <summary>
         /// Lookup or create an entity table model for a given type
         /// </summary>

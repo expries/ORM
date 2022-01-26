@@ -112,7 +112,7 @@ namespace ORM.Core.Caching
             object? pk = table.PrimaryKey.GetValue(entity);
 
             string? storedHash = GetHash(entity, pk);
-            string? computedHash = ComputeHash(entity);
+            string computedHash = ComputeHash(entity);
             
             return storedHash is null || storedHash != computedHash;
         }
@@ -152,12 +152,7 @@ namespace ORM.Core.Caching
 
                 if (column.IsForeignKey)
                 {
-                    var foreignKey = table.ForeignKeys.First(x => x.LocalColumn.Name == column.Name);
-                    var externalField = table.ExternalFields.First(x => x.Table.Type == foreignKey.RemoteTable.Type);
-                    var property = table.Type.GetProperties().First(p => p.PropertyType == externalField.Table.Type);
-                    object? navigatedEntity = property.GetValue(entity);
-                    var navigatedTable = navigatedEntity.GetType().ToTable();
-                    object? pk = navigatedTable.PrimaryKey.GetValue(navigatedEntity);
+                    var pk = column.GetValue(entity);
                     hashString += pk;
                 }
                 else
@@ -203,9 +198,9 @@ namespace ORM.Core.Caching
                 }
             }
 
-            byte[]? utf8Bytes = Encoding.UTF8.GetBytes(hashString);
-            byte[]? hashBytes = SHA256.Create().ComputeHash(utf8Bytes);
-            string? hashUtf8String = Encoding.UTF8.GetString(hashBytes);
+            byte[] utf8Bytes = Encoding.UTF8.GetBytes(hashString);
+            byte[] hashBytes = SHA256.Create().ComputeHash(utf8Bytes);
+            string hashUtf8String = Encoding.UTF8.GetString(hashBytes);
             return hashUtf8String;
         }
     }

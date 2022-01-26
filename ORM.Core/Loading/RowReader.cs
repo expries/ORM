@@ -118,7 +118,7 @@ namespace ORM.Core.Loading
         }
 
         /// <summary>
-        /// Reads a primitive type
+        /// Reads a value type
         /// </summary>
         /// <exception cref="ObjectMappingException"></exception>
         private void ReadValueType()
@@ -131,17 +131,20 @@ namespace ORM.Core.Loading
             var valueType = _reader.GetFieldType(0);
             object? value;
 
+            // Read as integer if property is int and database column is long
             if (valueType == typeof(long) && 
                 typeof(T) == typeof(int) && 
                 !_reader.IsDBNull(0))
             {
                 value = _reader.GetInt32(0);
             } 
+            // Read value
             else
             {
                 value = _reader.GetValue(0);
             }
 
+            // If result is integer or long (like in LINQ's Count()-Method, then convert NULL to 0)
             if (valueType == typeof(int) || valueType == typeof(long))
             {
                 value = value == DBNull.Value ? 0 : value;
@@ -157,18 +160,12 @@ namespace ORM.Core.Loading
         {
             var properties = typeof(T).GetProperties();
 
-            var valueTypeProperties = properties.Where(p => 
-                p.PropertyType.IsValueType());
-
-            var complexTypeProperties = properties.Where(p =>
-                !p.PropertyType.IsValueType());
-
-            foreach (var property in valueTypeProperties)
+            foreach (var property in properties.Where(p => p.PropertyType.IsValueType()))
             {
                 SetInternalProperty(property);
             }
 
-            foreach (var property in complexTypeProperties)
+            foreach (var property in properties.Where(p => !p.PropertyType.IsValueType()))
             {
                 var entityType = property.PropertyType.GetUnderlyingType();
                 SetExternalProperty(property, entityType);

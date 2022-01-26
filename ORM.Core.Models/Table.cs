@@ -70,14 +70,14 @@ namespace ORM.Core.Models
         }
 
         /// <summary>
-        /// Adds a foreign key for the given entity table
+        /// Adds a foreign key toe the given entity table
         /// </summary>
         /// <param name="other"></param>
         /// <param name="nullable"></param>
         protected void AddForeignKey(EntityTable other, bool nullable)
         {
             string fkName = $"fk_{other.Name}_{other.PrimaryKey.Name}";
-            var fkColumn = new Column(fkName, other.PrimaryKey.Type, isForeignKey: true, isNullable: nullable);
+            var fkColumn = new Column(fkName, other.PrimaryKey.Type, other, isForeignKey: true, isNullable: nullable);
             var fkConstraint = new ForeignKey(fkColumn, other.PrimaryKey, other);
             Columns.Add(fkColumn);
             ForeignKeys.Add(fkConstraint);

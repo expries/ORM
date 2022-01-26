@@ -4,6 +4,7 @@ using System.ComponentModel.DataAnnotations.Schema;
 using System.Linq;
 using System.Reflection;
 using ORM.Core.Models.Attributes;
+using ORM.Core.Models.Extensions;
 
 namespace ORM.Core.Models
 {
@@ -22,6 +23,11 @@ namespace ORM.Core.Models
         /// </summary>
         public Type Type { get; private set; }
         
+        /// <summary>
+        /// The remote table for foreign key columns
+        /// </summary>
+        public Table? Table { get; private set; }
+
         /// <summary>
         /// If this column should be mapped to/from the database
         /// </summary>
@@ -52,12 +58,13 @@ namespace ORM.Core.Models
         /// </summary>
         public int? MaxLength { get; private set; }
 
-        public Column(string name, Type type, bool isForeignKey = false, bool isNullable = true)
+        public Column(string name, Type type, Table table, bool isForeignKey = false, bool isNullable = true)
         {
             Name = name;
             Type = type;
             IsForeignKey = isForeignKey;
             IsNullable = isNullable;
+            Table = table;
             IsMapped = true;
         }
         
@@ -77,9 +84,28 @@ namespace ORM.Core.Models
         /// <returns></returns>
         public object? GetValue<T>(T entity)
         {
-            var property = GetProperty(entity);
-            object? value = property?.GetValue(entity);
-            return value;
+            // for columns that are not foreign keys, return the properties.
+            if (!IsForeignKey)
+            {
+                var property = GetProperty(entity);
+                object? value = property?.GetValue(entity);
+                return value;    
+            }
+
+            if (Table is not EntityTable remoteEntityTable)
+            {
+                return null;
+            }
+
+            // Get the reference entity
+            var entityType = entity?.GetType();
+            var propertyForForeignKey = entityType?
+                .GetProperties()
+                .First(x => x.PropertyType.GetUnderlyingType() == remoteEntityTable.Type);
+            
+            object? referencedEntity = propertyForForeignKey?.GetValue(entity);
+            // return the reference entity's primary key
+            return remoteEntityTable.PrimaryKey.GetValue(referencedEntity);
         }
 
         /// <summary>
