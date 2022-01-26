@@ -111,6 +111,11 @@ namespace ORM.Core.Caching
             var table = entity.GetType().ToTable();
             object? pk = table.PrimaryKey.GetValue(entity);
 
+            if (pk is null)
+            {
+                return true;
+            }
+
             string? storedHash = GetHash(entity, pk);
             string computedHash = ComputeHash(entity);
             

@@ -6,7 +6,6 @@
     </PropertyGroup>
 
     <ItemGroup>
-      <ProjectReference Include="..\ORM.Core.Models\ORM.Core.Models.csproj" />
       <ProjectReference Include="..\ORM.Core\ORM.Core.csproj" />
       <ProjectReference Include="..\ORM.Linq.Interfaces\ORM.Linq.Interfaces.csproj" />
     </ItemGroup>
