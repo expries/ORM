@@ -46,6 +46,15 @@ namespace ORM.Core.Configuration
         }
 
         /// <summary>
+        /// Use a specific cache.
+        /// </summary>
+        /// <param name="cache"></param>
+        public void UseCache(ICache cache)
+        {
+            Cache = cache;
+        }
+
+        /// <summary>
         /// Use a specific command builder.
         /// This is used for implementing your own translator for database context operations.
         /// </summary>

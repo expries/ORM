@@ -41,8 +41,8 @@ namespace ORM.Core
         protected DbContext()
         {
             _cache = _options.Cache;
-            _commandBuilder = _options.CommandBuilder ?? throw new OrmException("No command builder is defined. Please configure a database by writing for example DbContext.Configure(c => c.UsePostgres());");
-            _queryProvider = _options.QueryProvider ?? throw new OrmException("No query provider is defined. Please configure a database by writing for example DbContext.Configure(c => c.UsePostgres());");
+            _commandBuilder = _options.CommandBuilder ?? throw new OrmException($"No command builder is defined. Please configure a database by writing for example {nameof(DbContext)}.{nameof(Configure)}(c => c.UsePostgres());");
+            _queryProvider = _options.QueryProvider ?? throw new OrmException($"No query provider is defined. Please configure a database by writing for example {nameof(DbContext)}.{nameof(Configure)}((c => c.UsePostgres());");
             InitializeDbContext();
         }
         
@@ -55,6 +55,14 @@ namespace ORM.Core
             var builder = new OptionsBuilder();
             configure(builder);
             _options = builder;
+        }
+
+        /// <summary>
+        /// Resets the applied configuration for this database context.
+        /// </summary>
+        public static void ResetConfiguration()
+        {
+            _options = new OptionsBuilder();
         }
 
         /// <summary>
@@ -135,23 +143,23 @@ namespace ORM.Core
         {
             var entityType = entity.GetType();
             var entityTable = entityType.ToTable();
-            var oneToManyReferences = entityTable.GetPropertiesOf(RelationshipType.OneToMany);
+            var collectionReference = entityTable.GetPropertiesOf(RelationshipType.OneToMany);
             
-            // Update one to many references
-            foreach (var property in oneToManyReferences)
+            // Update references that are collections (one to many)
+            foreach (var property in collectionReference)
             {
-                var referenceCollection = property.GetValue(entity) as IEnumerable<object>;
+                var collection = property.GetValue(entity) as IEnumerable<object>;
 
-                // if reference collection is not set, initialize it
-                if (referenceCollection is null)
+                // if collection is null, initialize list
+                if (collection is null)
                 {
-                    object? collection = Activator.CreateInstance(property.PropertyType);
-                    referenceCollection = collection as IEnumerable<object> ?? new List<object>();
-                    property.SetValue(entity, collection);
+                    object? instance = Activator.CreateInstance(property.PropertyType);
+                    collection = instance as IEnumerable<object> ?? new List<object>();
+                    property.SetValue(entity, instance);
                 }
                 
-                // Update references to this entity in the items of the reference collections
-                foreach (object reference in referenceCollection)
+                // Update references to this entity in the items of the list
+                foreach (object reference in collection)
                 {
                     var referenceType = reference.GetType();
                     var navigatedProperty = referenceType.GetNavigatedProperty(entityType);
@@ -159,10 +167,10 @@ namespace ORM.Core
                 }
             }
             
-            var manyToOneReferences = entityTable.GetPropertiesOf(RelationshipType.ManyToOne);
+            var singleReferences = entityTable.GetPropertiesOf(RelationshipType.ManyToOne);
 
-            // Update many to one references
-            foreach (var property in manyToOneReferences)
+            // Update single references (many to one)
+            foreach (var property in singleReferences)
             {
                 object? reference = property.GetValue(entity);
 
@@ -227,12 +235,21 @@ namespace ORM.Core
         {
             var entityType = entity.GetType();
             var entityTable = entityType.ToTable();
+
             var references = entityTable.GetPropertiesOf(RelationshipType.ManyToMany);
             
             // Save many to many references
             foreach (var property in references)
             {
-                var entries = property.GetValue(entity) as IEnumerable<object> ?? new List<object>();
+                var entries = property.GetValue(entity) as IEnumerable<object>;
+                
+                // if collection is null, create it
+                if (entries is null)
+                {
+                    entries = Activator.CreateInstance(property.PropertyType) as IEnumerable<object>;
+                    property.SetValue(entity, entries);
+                }
+                
                 entries = entries.ToList();
                 
                 var referencesPrimaryKeys = entries.Select(SaveEntity).ToList();
@@ -241,7 +258,7 @@ namespace ORM.Core
                 var removeCmd = _commandBuilder.BuildRemoveManyToManyReferences(entity, referenceType);
                 removeCmd.ExecuteNonQuery();
 
-                if (entries.ToList().Count > 0)
+                if (entries.Any())
                 {
                     var addCmd = _commandBuilder.BuildSaveManyToManyReferences(entity, referenceType, referencesPrimaryKeys);
                     addCmd.ExecuteNonQuery();
