@@ -77,50 +77,6 @@ namespace ORM.Core.Models
         }
 
         /// <summary>
-        /// Gets the value a given entity stores in this column
-        /// </summary>
-        /// <param name="entity"></param>
-        /// <typeparam name="T"></typeparam>
-        /// <returns></returns>
-        public object? GetValue<T>(T entity)
-        {
-            // for columns that are not foreign keys, return the properties.
-            if (!IsForeignKey)
-            {
-                var property = GetProperty(entity);
-                object? value = property?.GetValue(entity);
-                return value;    
-            }
-
-            if (Table is not EntityTable remoteEntityTable)
-            {
-                return null;
-            }
-
-            // Get the reference entity
-            var entityType = entity?.GetType();
-            var propertyForForeignKey = entityType?
-                .GetProperties()
-                .First(x => x.PropertyType.GetUnderlyingType() == remoteEntityTable.Type);
-            
-            object? referencedEntity = propertyForForeignKey?.GetValue(entity);
-            // return the reference entity's primary key
-            return remoteEntityTable.PrimaryKey.GetValue(referencedEntity);
-        }
-
-        /// <summary>
-        /// Sets a value for this column on a given entity
-        /// </summary>
-        /// <param name="entity"></param>
-        /// <param name="value"></param>
-        /// <typeparam name="T"></typeparam>
-        public void SetValue<T>(T entity, object value)
-        {
-            var property = GetProperty(entity);
-            property?.SetValue(entity, value);
-        }
-
-        /// <summary>
         /// Sets the column data based on a given property
         /// </summary>
         /// <param name="property"></param>
@@ -169,6 +125,49 @@ namespace ORM.Core.Models
             {
                 MaxLength = maxLengthAttribute.Length;
             }
+        }
+        
+        /// <summary>
+        /// Returns  the value a given entity stores in this column.
+        /// For foreign keys, returns the primary key of the reference entity.
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <typeparam name="T"></typeparam>
+        /// <returns></returns>
+        public object? GetValue<T>(T entity)
+        {
+            // for columns that are not foreign keys, return the properties.
+            if (!IsForeignKey)
+            {
+                var property = GetProperty(entity);
+                object? value = property?.GetValue(entity);
+                return value;    
+            }
+
+            if (Table is not EntityTable table) return null;
+            
+            // Get the reference entity
+            var entityType = entity?.GetType();
+            var properties = entityType?.GetProperties();
+            var fkProperty = properties?.First(x => x.PropertyType.GetUnderlyingType() == table.Type);
+            object? reference = fkProperty?.GetValue(entity);
+            
+            // return the reference entity's primary key
+            object? foreignKey = table.PrimaryKey.GetValue(reference);
+            return foreignKey;
+
+        }
+
+        /// <summary>
+        /// Sets a value for this column on a given entity
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <param name="value"></param>
+        /// <typeparam name="T"></typeparam>
+        public void SetValue<T>(T entity, object value)
+        {
+            var property = GetProperty(entity);
+            property?.SetValue(entity, value);
         }
         
         /// <summary>

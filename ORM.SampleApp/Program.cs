@@ -18,7 +18,7 @@ namespace ORM.Application
 
             var ctx = new ShopContext();
             ctx.EnsureCreated();
-            
+
 
             Show.SaveObject.ShowBasic();
             Show.SaveObject.ShowWithManyToOne();
@@ -34,6 +34,9 @@ namespace ORM.Application
             var products = ctx.GetAll<Product>().ToList();
 
             var books = ctx.Books.ToList();
+
+            var result = ctx.Books.Select(x => 1);
+
             int x = ctx.Books.Count(x => x.Price > 100);
             int y = ctx.Books.Where(x => x.Price > 100).Count();
             double z = ctx.Books.Max(x => x.Price);

@@ -12,13 +12,13 @@ namespace ORM.Core.Caching
     /// </summary>
     public class EntityCache : ICache
     {
-        private readonly Dictionary<(Type, object), object> _cache = new Dictionary<(Type, object), object>();
+        protected readonly Dictionary<(Type, object), object> _cache = new Dictionary<(Type, object), object>();
 
         /// <summary>
         /// Saves an entity to the cache
         /// </summary>
         /// <param name="entity"></param>
-        public void Save(object entity)
+        public virtual void Save(object entity)
         {
             var table = entity.GetType().ToTable();
             object? pk = table.PrimaryKey.GetValue(entity);
@@ -36,7 +36,7 @@ namespace ORM.Core.Caching
         /// Returns successfully whether entity was present in cache or not
         /// </summary>
         /// <param name="entity"></param>
-        public void Remove(object entity)
+        public virtual void Remove(object entity)
         {
             var table = entity.GetType().ToTable();
             object? pk = table.PrimaryKey.GetValue(entity);
@@ -98,6 +98,6 @@ namespace ORM.Core.Caching
         /// </summary>
         /// <param name="entity"></param>
         /// <returns></returns>
-        public bool HasChanged(object? entity) => true;
+        public virtual bool HasChanged(object? entity) => true;
     }
 }

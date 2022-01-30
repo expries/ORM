@@ -79,7 +79,6 @@ namespace ORM.Core.Loading
             {
                 // Create a lazy proxy for lazy-loading relationship properties
                 Current = LazyProxyFactory.CreateProxy<T>();
-                // Fill the 'Current' object with data
                 ReadComplexType();
             }
 
@@ -228,7 +227,7 @@ namespace ORM.Core.Loading
                 throw new ObjectMappingException($"Failed to find load method for relationship {relationship}");
             }
 
-            // Build lazy loading method
+            // Build loading method
             var loadMethod = loadMethodInfo.MakeGenericMethod(typeof(T), externalType);
             object? lazyResult = loadMethod.Invoke(this, new object[] { Current });
 

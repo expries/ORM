@@ -42,7 +42,7 @@ namespace ORM.Core
         {
             _cache = _options.Cache;
             _commandBuilder = _options.CommandBuilder ?? throw new OrmException("No command builder is defined. Please configure a database by writing for example DbContext.Configure(c => c.UsePostgres());");
-            _queryProvider = _options.QueryProvider ?? throw new OrmException("No command builder is defined. Please configure a database by writing for example DbContext.Configure(c => c.UsePostgres());");
+            _queryProvider = _options.QueryProvider ?? throw new OrmException("No query provider is defined. Please configure a database by writing for example DbContext.Configure(c => c.UsePostgres());");
             InitializeDbContext();
         }
         

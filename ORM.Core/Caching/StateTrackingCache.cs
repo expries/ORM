@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
 using ORM.Core.Interfaces;
@@ -10,17 +9,15 @@ using ORM.Core.Models.Extensions;
 
 namespace ORM.Core.Caching
 {
-    public class StateTrackingCache : ICache
+    public class StateTrackingCache : EntityCache, ICache
     {
-        private readonly Dictionary<(Type, object), object> _cache = new Dictionary<(Type, object), object>();
-        
         private readonly Dictionary<(Type, object), string> _hashes = new Dictionary<(Type, object), string>();
 
         /// <summary>
         /// Saves an entity to the cache
         /// </summary>
         /// <param name="entity"></param>
-        public void Save(object entity)
+        public override void Save(object entity)
         {
             var table = entity.GetType().ToTable();
             object? pk = table.PrimaryKey.GetValue(entity);
@@ -33,13 +30,13 @@ namespace ORM.Core.Caching
             _cache[(table.Type, pk)] = entity;
             _hashes[(table.Type, pk)] = ComputeHash(entity);
         }
-
+        
         /// <summary>
         /// Removes an entity from the cache.
         /// Returns successfully whether entity was present in cache or not
         /// </summary>
         /// <param name="entity"></param>
-        public void Remove(object entity)
+        public override void Remove(object entity)
         {
             var table = entity.GetType().ToTable();
             object? pk = table.PrimaryKey.GetValue(entity);
@@ -53,46 +50,11 @@ namespace ORM.Core.Caching
             {
                 _cache.Remove((table.Type, pk));
             }
-        }
 
-        /// <summary>
-        /// Gets all the entities of a given type from the cache
-        /// </summary>
-        /// <param name="type"></param>
-        /// <returns></returns>
-        public List<object> GetAll(Type type)
-        {
-            var table = type.ToTable();
-            
-            var entities = _cache
-                .Where(kv => kv.Key.Item1 == table.Type)
-                .Select(kv => kv.Value)
-                .ToList();
-            
-            return entities;
-        }
-
-        /// <summary>
-        /// Gets an entity of a given type that has the provided primary key from the cache
-        /// </summary>
-        /// <param name="type"></param>
-        /// <param name="primaryKey"></param>
-        /// <returns></returns>
-        public object? Get(Type type, object? primaryKey)
-        {
-            if (primaryKey is null)
+            if (_hashes.ContainsKey((table.Type, pk)))
             {
-                return null;
+                _hashes.Remove((table.Type, pk));
             }
-
-            var table = type.ToTable();
-            
-            if (_cache.ContainsKey((table.Type, primaryKey)))
-            {
-                return _cache[(table.Type, primaryKey)];
-            }
-
-            return null;
         }
         
         /// <summary>
@@ -101,7 +63,7 @@ namespace ORM.Core.Caching
         /// </summary>
         /// <param name="entity"></param>
         /// <returns></returns>
-        public bool HasChanged(object? entity)
+        public override bool HasChanged(object? entity)
         {
             if (entity is null)
             {
@@ -145,7 +107,7 @@ namespace ORM.Core.Caching
             var table = type.ToTable();
             string hashString = string.Empty;
 
-            // internal fields
+            // internal fields and foreign keys
             foreach (var column in table.Columns)
             {
                 object? value = column.GetValue(entity);
@@ -157,8 +119,7 @@ namespace ORM.Core.Caching
 
                 if (column.IsForeignKey)
                 {
-                    var pk = column.GetValue(entity);
-                    hashString += pk;
+                    hashString += value;
                 }
                 else
                 {
@@ -166,7 +127,7 @@ namespace ORM.Core.Caching
                 }
             }
 
-            // external fields
+            // external fields (collections)
             foreach (var property in table.Type.GetProperties())
             {
                 var propertyType = property.PropertyType;
@@ -181,32 +142,20 @@ namespace ORM.Core.Caching
                 var entityTable = entityType.ToTable();
                 
                 // get primary keys of reference collection
-                if (propertyType.IsCollectionOfOneType())
-                {
-                    var collection = value as IEnumerable ?? new List<object>();
-                    
-                    foreach (object? x in collection)
-                    {
-                        object? xpk = entityTable.PrimaryKey.GetValue(x);
-                        hashString += $"{xpk},";
-                    }
-
-                    continue;
-                }
+                if (!propertyType.IsCollectionOfOneType()) continue;
+                var collection = value as IEnumerable ?? new List<object>();
+                hashString += $"{entityTable}=";    
                 
-                // get primary of single reference
-                object? pk = entityTable.PrimaryKey.GetValue(value);
-
-                if (pk is not null)
+                foreach (object? item in collection)
                 {
-                    hashString += $"{pk}";
+                    object? itemPk = entityTable.PrimaryKey.GetValue(item);
+                    hashString += $"{itemPk};";
                 }
             }
 
             byte[] utf8Bytes = Encoding.UTF8.GetBytes(hashString);
             byte[] hashBytes = SHA256.Create().ComputeHash(utf8Bytes);
-            string hashUtf8String = Encoding.UTF8.GetString(hashBytes);
-            return hashUtf8String;
+            return Encoding.UTF8.GetString(hashBytes);
         }
     }
 }
