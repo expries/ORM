@@ -104,6 +104,7 @@ namespace ORM.Core.Models
             if (attribute is KeyAttribute)
             {
                 IsPrimaryKey = true;
+                IsNullable = false;
             }
                 
             if (attribute is RequiredAttribute)

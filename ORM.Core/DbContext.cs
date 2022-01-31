@@ -31,7 +31,7 @@ namespace ORM.Core
         /// <summary>
         /// Cache for storing entities
         /// </summary>
-        private readonly ICache _cache;
+        private readonly ICache? _cache;
 
         /// <summary>
         /// Configuration of the current database context
@@ -52,9 +52,7 @@ namespace ORM.Core
         /// <param name="configure"></param>
         public static void Configure(Action<OptionsBuilder> configure)
         {
-            var builder = new OptionsBuilder();
-            configure(builder);
-            _options = builder;
+            configure(_options);
         }
 
         /// <summary>
@@ -93,7 +91,7 @@ namespace ORM.Core
             UpdateReferences(entity);
             
             // Do nothing if cached entity did not changed
-            if (!_cache.HasChanged(entity))
+            if (_cache is not null && !_cache.HasChanged(entity))
             {
                 return;
             }
@@ -103,7 +101,7 @@ namespace ORM.Core
             SaveReferences(entity);
             
             // Save entity in cache
-            _cache.Save(entity);
+            _cache?.Save(entity);
         }
         
         /// <summary>
@@ -157,6 +155,8 @@ namespace ORM.Core
                     collection = instance as IEnumerable<object> ?? new List<object>();
                     property.SetValue(entity, instance);
                 }
+
+                collection = collection.Where(x => x is not null);
                 
                 // Update references to this entity in the items of the list
                 foreach (object reference in collection)
@@ -177,9 +177,9 @@ namespace ORM.Core
                 // If reference is null, throw an error, as its primary key needs to be stored as a foreign key
                 if (reference is null)
                 {
-                    throw new OrmException($"Can't save entity of type {entityType.Name}, because the " +
-                                           $"many-to-one property {property.Name} is set to null. Please first save " +
-                                           $"an {property.PropertyType.Name} entity using " +
+                    throw new OrmException($"Can't save entity of type '{entityType.Name}', because the " +
+                                           $"many-to-one property '{property.Name}' is set to null. Please first save " +
+                                           $"an entity of type '{property.PropertyType.Name}' using " +
                                            $"{nameof(DbContext)}.{nameof(Save)}() and then set the property.");
                 }
 
@@ -188,7 +188,7 @@ namespace ORM.Core
                 object? referencePk = referenceTable.PrimaryKey.GetValue(reference);
 
                 // If the reference is set, but not saved yet, save it
-                if (_cache.Get(referenceType, referencePk) is null)
+                if (_cache is not null && _cache.Get(referenceType, referencePk) is null)
                 {
                     SaveEntity(reference);
                 }
@@ -211,6 +211,8 @@ namespace ORM.Core
                 {
                     navigatedList.Add(entity);
                     var itemType = navigatedProperty.PropertyType.GetUnderlyingType();
+
+                    var x = navigatedList.OfType<object>();
                     
                     // Convert list to correct type as List<object> can not be set on the entity
                     var ofTypeMethod = typeof(Enumerable).GetMethod(nameof(Enumerable.OfType));
@@ -286,6 +288,13 @@ namespace ORM.Core
         /// <returns></returns>
         public T GetById<T>(object pk)
         {
+            object? cachedEntry = _cache?.Get(typeof(T), pk);
+
+            if (cachedEntry is not null)
+            {
+                return (T) cachedEntry;
+            }
+            
             var cmd = _commandBuilder.BuildGetById<T>(pk);
             var reader = cmd.ExecuteReader();
             return (T) CreateObjectReader<T>(reader);
@@ -335,7 +344,7 @@ namespace ORM.Core
         private IEnumerable<Table> GetTables(Assembly assembly)
         {
             var entityTypes = GetEntityTypes(assembly);
-            var entityTables = entityTypes.Select(t => t.ToTable());
+            var entityTables = entityTypes.Select(t => t.ToTable()).ToList();
             var tables = GetAllTables(entityTables);
             return tables;
         }
@@ -345,10 +354,10 @@ namespace ORM.Core
         /// </summary>
         /// <param name="tables"></param>
         /// <returns></returns>
-        private static IEnumerable<Table> GetAllTables(IEnumerable<EntityTable> tables)
+        private static IEnumerable<Table> GetAllTables(List<EntityTable> tables)
         {
             var tableList = tables.ToList();
-            IEnumerable<Table> allTables = tableList;
+            var allTables = tableList.OfType<Table>().ToList();
             
             foreach (var table in tableList)
             {
@@ -358,7 +367,10 @@ namespace ORM.Core
                 allTables = allTables.Union(manyToManyTables).ToList();
             }
             
-            return allTables.ToList();
+            return allTables
+                .GroupBy(x => x.Name)
+                .Select(grp => grp.First())
+                .ToList();
         }
         
         /// <summary>

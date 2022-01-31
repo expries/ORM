@@ -180,8 +180,12 @@ namespace ORM.Core.Loading
         private void SetInternalProperty(PropertyInfo property)
         {
             var column = new Column(property);
-            object? value = ReadValue(column);
-            property.SetValue(Current, value);
+            
+            if (column.IsMapped)
+            {
+                object? value = ReadValue(column);
+                property.SetValue(Current, value);   
+            }
         }
 
         /// <summary>
@@ -217,7 +221,7 @@ namespace ORM.Core.Loading
 
             var loadMethodInfo = relationship switch
             {
-                RelationshipType.OneToOne   => type.GetMethod(nameof(LoadOneToMany), flags),
+                RelationshipType.OneToOne   => type.GetMethod(nameof(LoadOneToOne), flags),
                 RelationshipType.OneToMany  => type.GetMethod(nameof(LoadOneToMany), flags),
                 RelationshipType.ManyToOne  => type.GetMethod(nameof(LoadManyToOne), flags),
                 RelationshipType.ManyToMany => type.GetMethod(nameof(LoadManyToMany), flags),
@@ -276,6 +280,12 @@ namespace ORM.Core.Loading
         {
             List<TManyB> Loading() => _lazyLoader.LoadManyToMany<TManyA, TManyB>(entity);
             return new Lazy<List<TManyB>>(Loading);
+        }
+
+        private Lazy<TOneB?> LoadOneToOne<TOneA, TOneB>(TOneA entity)
+        {
+            TOneB? Loading() => _lazyLoader.LoadManyToMany<TOneA, TOneB>(entity).FirstOrDefault();
+            return new Lazy<TOneB?>(Loading);
         }
     }
 }

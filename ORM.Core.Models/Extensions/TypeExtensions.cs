@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using System.Threading;
 
 namespace ORM.Core.Models.Extensions
 {
@@ -51,7 +52,7 @@ namespace ORM.Core.Models.Extensions
         {
             var navigatedProperty = type
                 .GetProperties()
-                .FirstOrDefault(p => p.PropertyType.GetUnderlyingType() == other);
+                .FirstOrDefault(p => p.PropertyType.GetUnderlyingType() == other.GetProxiedType() );
 
             return navigatedProperty;
         }
@@ -71,9 +72,9 @@ namespace ORM.Core.Models.Extensions
         /// </summary>
         /// <param name="type"></param>
         /// <returns></returns>
-        public static Type? GetProxiedType(this Type type)
+        public static Type GetProxiedType(this Type type)
         {
-            return type.IsProxy() ? type.BaseType : null;
+            return type.IsProxy() && type.BaseType is not null ? type.BaseType : type;
         }
         
         /// <summary>

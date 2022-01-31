@@ -454,14 +454,14 @@ namespace ORM.Postgres.SqlDialect
                 .Append(Environment.NewLine);
 
             int i = 0;
-            var columns = table.Columns.Where(c => c.IsMapped);
+            var columns = table.Columns.Where(c => c.IsMapped).ToList();
             
             foreach (var column in columns)
             {
                 _sql.Append('\t');
                 WriteColumn(column);
                 
-                if (i < table.Columns.Count - 1)
+                if (i < columns.Count - 1)
                 {
                     _sql.Append(',');
                 }

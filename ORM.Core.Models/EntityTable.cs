@@ -44,6 +44,7 @@ namespace ORM.Core.Models
             if (proxiedType is not null)
             {
                 entityType = proxiedType;
+                Name = entityType.Name;
             }
             
             Type = entityType;
@@ -100,7 +101,7 @@ namespace ORM.Core.Models
             try
             {
                 var pk = Columns.SingleOrDefault(c => c.IsPrimaryKey);
-                PrimaryKey = pk ?? throw new InvalidEntityException($"Type {Type.Name} is missing a primary key column.");
+                PrimaryKey = pk ?? throw new InvalidEntityException($"Type {Type.Name} is missing a primary key column. Please define one using the  'Key' attribute.");
             }
             catch (InvalidOperationException)
             {

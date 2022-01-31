@@ -12,7 +12,7 @@ namespace ORM.Core.Configuration
         /// <summary>
         /// Used for caching entity
         /// </summary>
-        internal ICache Cache;
+        internal ICache? Cache;
 
         /// <summary>
         /// Used for building commands to be executed against the current database connection
@@ -26,7 +26,6 @@ namespace ORM.Core.Configuration
 
         public OptionsBuilder()
         {
-            Cache = new EntityCache();
         }
 
         /// <summary>
@@ -43,6 +42,14 @@ namespace ORM.Core.Configuration
         public void UseStateTrackingCache()
         {
             Cache = new StateTrackingCache();
+        }
+
+        /// <summary>
+        /// Use no cache
+        /// </summary>
+        public void UseNoCache()
+        {
+            Cache = null;
         }
 
         /// <summary>

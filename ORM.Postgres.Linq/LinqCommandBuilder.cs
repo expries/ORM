@@ -8,6 +8,7 @@ using System.Reflection;
 using System.Text;
 using Npgsql;
 using ORM.Core.Models;
+using ORM.Core.Models.Exceptions;
 using ORM.Core.Models.Extensions;
 using ORM.Linq.Interfaces;
 
@@ -19,11 +20,30 @@ namespace ORM.Postgres.Linq
     [ExcludeFromCodeCoverage]
     public class LinqCommandBuilder : ExpressionVisitor, ILinqCommandBuilder
     {
+        /// <summary>
+        /// A string builder for creating the current commands' command text.
+        /// </summary>
         private readonly StringBuilder _sql = new StringBuilder();
 
-        private readonly List<NpgsqlParameter> _parameters = new List<NpgsqlParameter>();
+        /// <summary>
+        /// The parameters of the current command
+        /// </summary>
+        private readonly List<IDbDataParameter> _parameters = new List<IDbDataParameter>();
 
+        /// <summary>
+        /// The current database connection
+        /// </summary>
         private readonly IDbConnection _connection;
+
+        /// <summary>
+        /// Helper field for prefixing parameters for e.g. 'StartsWith'
+        /// </summary>
+        private string _constantPrefix = string.Empty;
+        
+        /// <summary>
+        /// Helper field for suffixing parameters for e.g. 'StartsWith'
+        /// </summary>
+        private string _constantSuffix = string.Empty;
 
         public LinqCommandBuilder(IDbConnection connection)
         {
@@ -116,9 +136,18 @@ namespace ORM.Postgres.Linq
                 case "Sum":
                     TranslateSum(node);
                     return node;
+                
+                case "StartsWith":
+                    TranslateStartsWith(node);
+                    return node;
+                
+                case "EndsWith":
+                    TranslateEndsWithWith(node);
+                    return node;
+                
+                default:
+                    throw new OrmException($"Translating LINQ method {node.Method.Name} is not supported.");
             }
-
-            return node;
         }
 
         protected override Expression VisitConstant(ConstantExpression node)
@@ -136,7 +165,19 @@ namespace ORM.Postgres.Linq
                 return node;
             }
 
-            var parameter = CreateParameter(node.Value);
+            object? value = node.Value;
+
+            if (value is string stringValue)
+            {
+                value = $"{_constantPrefix}{stringValue}{_constantSuffix}";
+            }
+
+            if (value is char charValue)
+            {
+                value = $"{_constantPrefix}{charValue}{_constantSuffix}";
+            }
+
+            var parameter = CreateParameter(value);
             _sql.Append($"@{parameter.ParameterName}");
             return node;
         }
@@ -145,7 +186,14 @@ namespace ORM.Postgres.Linq
         {
             if (node.Member is PropertyInfo property)
             {
-                _sql.Append($"\"{property.Name}\"");
+                var column = new Column(property);
+
+                if (!column.IsMapped)
+                {
+                    throw new OrmException($"Can't filter by property '{property.Name}', because it is not mapped.");
+                }
+                
+                _sql.Append($"\"{column.Name}\"");
             }
             else
             {
@@ -302,6 +350,24 @@ namespace ORM.Postgres.Linq
             _sql.Append(") AS T");
         }
         
+        private void TranslateStartsWith(MethodCallExpression node)
+        {
+            Visit(node.Object);
+            _sql.Append(" LIKE ");
+            _constantSuffix = "%";
+            Visit(node.Arguments[0]);
+            _constantSuffix = string.Empty;
+        }
+        
+        private void TranslateEndsWithWith(MethodCallExpression node)
+        {
+            Visit(node.Object);
+            _sql.Append(" LIKE ");
+            _constantPrefix = "%";
+            Visit(node.Arguments[0]);
+            _constantPrefix = string.Empty;
+        }
+        
         /// <summary>
         /// Returns the operand of a quote expression as an unary expression.
         /// If the given expression is not a quote expression, the expression is returned as-is.
@@ -337,6 +403,7 @@ namespace ORM.Postgres.Linq
                 ExpressionType.LessThanOrEqual    => "<=",
                 ExpressionType.GreaterThan        => ">",
                 ExpressionType.GreaterThanOrEqual => ">=",
+                ExpressionType.OrElse             => "OR",
                 _ => throw new InvalidOperationException($"Binary operator {expressionOperator} is not supported.")
             };
         }
@@ -350,7 +417,7 @@ namespace ORM.Postgres.Linq
         private NpgsqlParameter CreateParameter<T>(T value)
         {
             int count = _parameters.Count;
-            string? name = $"p{count}";
+            string name = $"p{count}";
             var parameter = new NpgsqlParameter(name, value);
             _parameters.Add(parameter);
             return parameter;
