@@ -1,14 +1,15 @@
 # Setup
 
-Run 'docker compose up -d' to start the postgres database
+Run 'docker compose up -d' to start the postgres database.
 
-If you are using your own, it is recommended to leave it empty.
+If you are using your own database, it is recommended to 
+empty it beforehand (even though the ORM tries to delete any conflicting tables).
 
 # Configuration
 
-When using the docker compose of the project, the SampleApp Console Application should work out of the box.
+When starting the database with docker compose, the SampleApp Console Application should work out of the box.
 
-When using a custom connection string, configure the Database Context like this:
+When using a custom connection string, configure the Database Context like this (see Program.cs):
 
 ```
 DbContext.Configure(options =>
