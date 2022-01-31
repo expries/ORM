@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Data;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Text;
 using ORM.Core.Interfaces;
@@ -14,6 +15,7 @@ namespace ORM.Postgres.SqlDialect
     /// <summary>
     /// Builds database commands that execute against the current database connection
     /// </summary>
+    [ExcludeFromCodeCoverage]
     public class PostgresCommandBuilder : ICommandBuilder
     {
         /// <summary>

@@ -1,4 +1,5 @@
-﻿using Npgsql;
+﻿using System.Diagnostics.CodeAnalysis;
+using Npgsql;
 using ORM.Core.Configuration;
 using ORM.Core.Loading;
 using ORM.Linq;
@@ -10,6 +11,7 @@ namespace ORM.Postgres.Extensions
     /// <summary>
     /// Extends the options builder for configuring a database context.
     /// </summary>
+    [ExcludeFromCodeCoverage]
     public static class OptionsBuilderExtensions
     {
         /// <summary>
