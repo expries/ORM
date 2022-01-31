@@ -18,6 +18,7 @@ namespace ORM.Postgres.SqlDialect
         {
             [typeof(string)]   = () => new PostgresVarchar(PostgresVarchar.DefaultLength),
             [typeof(int)]      = () => new PostgresInt(),
+            [typeof(long)]     = () => new PostgresInt(),
             [typeof(double)]   = () => new PostgresDouble(),
             [typeof(DateTime)] = () => new PostgresDateTime(),
         };
