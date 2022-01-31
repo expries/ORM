@@ -1,8 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
-using System.Diagnostics.CodeAnalysis;
-using ORM.Core.Models.Attributes;
 
 namespace ORM.Core.Tests.Entities
 {
@@ -11,15 +9,10 @@ namespace ORM.Core.Tests.Entities
         [Key]
         public int ProductId { get; set; }
         
-        [Unique]
-        [MaxLength(40)]
-        [NotNull]
         public string Name { get; set; }
         
-        [NotNull]
         public double Price { get; set; }
         
-        [NotNull]
         public int Purchases { get; set; }
         
         public int Likes { get; set; }

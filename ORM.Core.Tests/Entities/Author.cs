@@ -1,11 +1,9 @@
 using System.Collections.Generic;
-using System.Diagnostics.CodeAnalysis;
 
 namespace ORM.Core.Tests.Entities
 {
-    public class Author : PersonOfInterest
+    public class Author : Person
     {
-        [NotNull]
         public double Price { get; set; }
         
         public virtual List<Book> Books { get; set; }

@@ -5,7 +5,6 @@ using System.Linq;
 using FizzWare.NBuilder;
 using FluentAssertions;
 using NSubstitute;
-using NSubstitute.Extensions;
 using ORM.Core.Interfaces;
 using ORM.Core.Models;
 using ORM.Core.Models.Exceptions;
