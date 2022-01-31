@@ -44,9 +44,9 @@ namespace ORM.Core.Models
         public bool IsUnique { get; private set; }
 
         /// <summary>
-        /// If this column may be null
+        /// If this column may be null. Default if field is not explicit required.
         /// </summary>
-        public bool IsNullable { get; private set; }
+        public bool IsNullable { get; private set; } = true;
         
         /// <summary>
         /// If this column is a foreign key
@@ -155,7 +155,6 @@ namespace ORM.Core.Models
             // return the reference entity's primary key
             object? foreignKey = table.PrimaryKey.GetValue(reference);
             return foreignKey;
-
         }
 
         /// <summary>

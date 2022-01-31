@@ -20,6 +20,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ORM.Postgres.Linq", "ORM.Po
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ORM.Core.Tests", "ORM.Core.Tests\ORM.Core.Tests.csproj", "{CFCCD844-DE6A-47DD-95C6-F955C76FD0B2}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ORM.Core.Models.Tests", "ORM.Core.Models.Tests\ORM.Core.Models.Tests.csproj", "{9627FF2F-6B58-4096-8A51-56BE775F4FA3}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -66,5 +68,9 @@ Global
 		{CFCCD844-DE6A-47DD-95C6-F955C76FD0B2}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{CFCCD844-DE6A-47DD-95C6-F955C76FD0B2}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{CFCCD844-DE6A-47DD-95C6-F955C76FD0B2}.Release|Any CPU.Build.0 = Release|Any CPU
+		{9627FF2F-6B58-4096-8A51-56BE775F4FA3}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{9627FF2F-6B58-4096-8A51-56BE775F4FA3}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{9627FF2F-6B58-4096-8A51-56BE775F4FA3}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{9627FF2F-6B58-4096-8A51-56BE775F4FA3}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal

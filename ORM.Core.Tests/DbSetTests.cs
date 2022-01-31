@@ -22,7 +22,7 @@ namespace ORM.Core.Tests
         }
 
         [Fact]
-        public void OnConstruction_ForEntityType_HasElementTypeAndConstantEnumeratorOfEntity()
+        public void AfterConstruction_ForEntityType_HasElementTypeAndConstantEnumeratorOfEntity()
         {
             _products.ElementType.Should().Be(typeof(Product));
         }
@@ -36,7 +36,7 @@ namespace ORM.Core.Tests
         }
         
         [Fact]
-        public void OnConstruction_ExpressionIsIQueryable_ThrowsArgumentOutOfRangeException()
+        public void OnConstruction_ExpressionIsIQueryable_ThrowsNoException()
         {
             var expression = Expression.Constant(_products);
             Func<DbSet<Product>> createDbSet = () => new DbSet<Product>(_queryProvider, expression);
