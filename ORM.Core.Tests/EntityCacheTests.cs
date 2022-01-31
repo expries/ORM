@@ -107,5 +107,12 @@ namespace ORM.Core.Tests
             bool result = _cache.HasChanged(obj);
             result.Should().BeTrue();
         }
+        
+        [Fact]
+        public void HasChanged_ObjectIsNull_ReturnsTrue()
+        {
+            bool result = _cache.HasChanged(null);
+            result.Should().BeTrue();
+        }
     }
 }
