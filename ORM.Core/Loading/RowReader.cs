@@ -2,6 +2,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.Data;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Reflection;
 using ORM.Core.Interfaces;
@@ -16,6 +17,7 @@ namespace ORM.Core.Loading
     /// Maps result rows from a data reader into objects of type T
     /// </summary>
     /// <typeparam name="T"></typeparam>
+    [ExcludeFromCodeCoverage]
     internal class RowReader<T> : IEnumerator<T>
     {
         /// <summary>

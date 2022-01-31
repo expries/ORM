@@ -4,8 +4,6 @@ using System.Linq;
 using System.Linq.Expressions;
 using FluentAssertions;
 using NSubstitute;
-using ORM.Core.Interfaces;
-using ORM.Core.Tests.DbContexts;
 using ORM.Core.Tests.Entities;
 using Xunit;
 
