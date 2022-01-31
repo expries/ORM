@@ -15,4 +15,8 @@
       <ProjectReference Include="..\ORM.Postgres\ORM.Postgres.csproj" />
     </ItemGroup>
 
+    <ItemGroup>
+        <AssemblyAttribute Include="System.Diagnostics.CodeAnalysis.ExcludeFromCodeCoverageAttribute" />
+    </ItemGroup>
+
 </Project>
